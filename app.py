@@ -114,7 +114,7 @@ def declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
     # Format the response
     result = f"""
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ Declined ❌</a>
+<a href='https://t.me/stormxvup'>┃ 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ❌</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱
