@@ -1,0 +1,4 @@
+telebot
+fake_useragent
+bs4
+flask
