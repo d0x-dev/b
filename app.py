@@ -6,7 +6,7 @@ from telebot.types import Message
 from chk import check_card  # Import the check function from chk.py
 
 # Bot token (replace with your actual token)
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = "8320534432:AAFPzKpzxWMAPS7aBBYmW-MuOPnOYvxPDOc"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # Configuration
