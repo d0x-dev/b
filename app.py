@@ -5,6 +5,7 @@ import time
 from telebot.types import Message
 from chk import check_card  # Import the check function from chk.py
 from au import process_card_au
+from at import process_card_at
 
 # Bot token (replace with your actual token)
 BOT_TOKEN = "8320534432:AAFPzKpzxWMAPS7aBBYmW-MuOPnOYvxPDOc"
@@ -228,6 +229,61 @@ def handle_au(message):
     
     # Check CC using the AU function from au.py
     check_result = process_card_au(cc)
+    
+    # Calculate time taken
+    end_time = time.time()
+    time_taken = round(end_time - start_time, 2)
+    
+    # Format and send final response
+    response_text = single_check_format(
+        cc=cc,
+        gateway=check_result["gateway"],
+        response=check_result["response"],
+        mention=mention,
+        Userstatus=user_status,
+        bin_info=bin_info,
+        time_taken=time_taken,
+        status=check_result["status"]
+    )
+    
+    # Edit the original message with the final result
+    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                         text=response_text, parse_mode='HTML')
+
+@bot.message_handler(commands=['at'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.at'))
+def handle_at(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    # Extract CC details from message
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV")
+        return
+    
+    cc = command_parts[1]
+    if '|' not in cc:
+        bot.reply_to(message, "Invalid format. Use: CC|MM|YY|CVV")
+        return
+    
+    # Get user info
+    user_status = get_user_status(message.from_user.id)
+    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+    
+    # Get bin info
+    bin_number = cc.split('|')[0][:6]
+    bin_info = get_bin_info(bin_number) or {}
+    
+    # Send checking status message
+    checking_msg = checking_status_format(cc, "Authnet [5$]", bin_info)
+    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
+    
+    # Start timer
+    start_time = time.time()
+    
+    # Check CC using the AT function from at.py
+    check_result = process_card_at(cc)
     
     # Calculate time taken
     end_time = time.time()
