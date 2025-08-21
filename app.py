@@ -50,6 +50,30 @@ def get_bin_info(bin_number):
     except:
         return None
 
+# Format for checking status
+def checking_status_format(cc, gateway, bin_info):
+    # Extract card details
+    parts = cc.split('|')
+    if len(parts) < 4:
+        return "Invalid card format. Use: CC|MM|YY|CVV"
+    
+    # Format the response
+    result = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ ↯ 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱 ⌁ {cc}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}<i/>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>Processing</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐫𝐚𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐚𝐧𝐤 ➳ {bin_info.get('type', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>"""
+    
+    return result
+
 # Format the check result for approved status
 def approved_check_format(cc, gateway, response, mention, Userstatus, bin_info, time_taken):
     # Extract card details
@@ -58,22 +82,23 @@ def approved_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
         return "Invalid card format. Use: CC|MM|YY|CVV"
     
     # Format the response
-    result = f"""<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+    result = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ✅</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝗖𝗮𝗿𝗱
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱
    ↳ <code>{cc}</code>
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⌯]</a>𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⌯]</a>𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('type', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('type', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
     
     return result
 
@@ -85,22 +110,23 @@ def declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
         return "Invalid card format. Use: CC|MM|YY|CVV"
     
     # Format the response
-    result = f"""<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+    result = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ Declined ❌</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝗖𝗮𝗿𝗱
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱
    ↳ <code>{cc}</code>
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⌯]</a>𝐁𝐫𝐚𝐧𝐑 ⌁ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⌯]</a>𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('type', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('type', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
-<a href='https://t.me/stormxvup'>[⌯]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
     
     return result
 
@@ -133,12 +159,16 @@ def handle_chk(message):
     user_status = get_user_status(message.from_user.id)
     mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
     
-    # Start timer
-    start_time = time.time()
-    
     # Get bin info
     bin_number = cc.split('|')[0][:6]
     bin_info = get_bin_info(bin_number) or {}
+    
+    # Send checking status message
+    checking_msg = checking_status_format(cc, "Stripe Auth", bin_info)
+    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
+    
+    # Start timer
+    start_time = time.time()
     
     # Check CC using the external function from chk.py
     check_result = check_card(cc)
@@ -147,7 +177,7 @@ def handle_chk(message):
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
     
-    # Format and send response
+    # Format and send final response
     response_text = single_check_format(
         cc=cc,
         gateway=check_result["gateway"],
@@ -159,7 +189,9 @@ def handle_chk(message):
         status=check_result["status"]
     )
     
-    bot.reply_to(message, response_text, parse_mode='HTML')
+    # Edit the original message with the final result
+    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                         text=response_text, parse_mode='HTML')
 
 # Broadcast function for owner/admin
 @bot.message_handler(commands=['broadcast'])
