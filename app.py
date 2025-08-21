@@ -64,7 +64,7 @@ def checking_status_format(cc, gateway, bin_info):
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱 ⌁ {cc}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}<i/>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>Processing</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐫𝐚𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
