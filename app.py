@@ -1831,19 +1831,22 @@ def handle_broadcast(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
+    # --- hard guard: don't process this update twice for the same chat ---
+    if not hasattr(bot, "user_data"):
+        bot.user_data = {}
+    last = bot.user_data.get(message.chat.id, {})
+    if last.get("last_update_id") == message.message_id:
+        return  # already handled
+    bot.user_data[message.chat.id] = {"last_update_id": message.message_id}
+
     save_user(message.from_user.id)
-    
-    # Get user information
+
     user = message.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
-    join_date = message.date  # This is a timestamp, convert to readable format
-    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
-    
-    # Credits (you can implement your own credit system)
-    credits = "0"  # Default credits
-    
-    # Create the caption with formatting
+    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message.date))
+    credits = "0"
+
     caption = f"""
 ↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
 
@@ -1855,52 +1858,38 @@ def handle_start(message):
 
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
-    
-    # Create inline keyboard buttons - 2 buttons per line
+
+    # keyboard
     markup = telebot.types.InlineKeyboardMarkup()
-    
-    # Row 1
     btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
     btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
-    
-    # Row 2
     btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
     btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
-    
-    # Row 3
     btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
-    
-    # Add buttons to markup
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
     markup.row(btn5)
-    
-    # Try to send video first, if it fails send text message
+
+    # --- send exactly one message ---
     try:
         msg = bot.send_video(
-            message.chat.id,
-            "https://t.me/video336/2",
+            chat_id=message.chat.id,
+            data="https://t.me/video336/2",
             caption=caption,
-            parse_mode='HTML',
+            parse_mode="HTML",
             reply_markup=markup
         )
-        # Store message ID for later editing
-        if not hasattr(bot, 'user_data'):
-            bot.user_data = {}
-        bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
-        
-    except Exception as e:
-        print(f"Video send failed: {e}")
-        # If video fails, send text message instead (only one message)
+    except Exception:
         msg = bot.send_message(
-            message.chat.id,
-            caption,
-            parse_mode='HTML',
+            chat_id=message.chat.id,
+            text=caption + "\n\n🎥 Video preview unavailable",
+            parse_mode="HTML",
             reply_markup=markup
         )
-        if not hasattr(bot, 'user_data'):
-            bot.user_data = {}
-        bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
+
+    # store welcome message id (optional)
+    bot.user_data[message.chat.id]["welcome_msg_id"] = msg.message_id
+
 
 # Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
