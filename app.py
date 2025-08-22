@@ -1,4 +1,4 @@
-import telebot
+2import telebot
 import requests
 import json
 import time
@@ -319,33 +319,42 @@ STATUS_EMOJIS = {
     'Error': '⚠️'
 }
 
-# Add this function for mass check formatting
+# Update this function for mass check formatting
 def format_mass_check(results, total_cards, processing_time, gateway, checked=0):
-    approved = sum(1 for r in results if r['status'] == 'Approved')
-    ccn = sum(1 for r in results if r['status'] == 'CCN')
-    declined = sum(1 for r in results if r['status'] == 'Declined')
-    errors = sum(1 for r in results if r['status'] == 'ERROR')
+    approved = sum(1 for r in results if r['status'].upper() in ['APPROVED', 'APPROVED'])
+    ccn = sum(1 for r in results if r['status'].upper() == 'CCN')
+    declined = sum(1 for r in results if r['status'].upper() in ['DECLINED', 'DECLINED'])
+    errors = sum(1 for r in results if r['status'].upper() in ['ERROR', 'ERROR'])
     
-    link = "https://t.me/stormxvup"
-    response = f"""<a href='{link}'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>  <a href='{link}'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i> <a href='{link}'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>  <a href='{link}'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>   <a href='{link}'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i> <a href='{link}'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i> <a href='{link}'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>{processing_time:.2f} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>  <a href='{link}'>──────── ⸙ ─────────</a>"""
+    response = f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
-    
-    for result in results:
-        emoji = STATUS_EMOJIS.get(result['status'], '❓')
-        response += f"<code>{result['card']}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ {emoji} <i>{result['response']}</i>\n<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>\n"
-    
-    return response
-
-# Add this function for mass check while checking format
-response = f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>  
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>{processing_time:.2f} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>"""
 
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+"""
+    
+    for result in results:
+        status_key = result['status'].upper()
+        emoji = STATUS_EMOJIS.get(status_key, '❓')
+        # Handle case where status might be in different formats
+        if status_key not in STATUS_EMOJIS:
+            if 'APPROVED' in status_key:
+                emoji = '✅'
+            elif 'DECLINED' in status_key:
+                emoji = '❌'
+            elif 'ERROR' in status_key:
+                emoji = '⚠️'
+            else:
+                emoji = '❓'
+                
+        response += f"<code>{result['card']}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ {emoji} <i>{result['response']}</i>\n<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>\n"
+    
+    return response
 
 # Add these constants at the top with other configurations
 MAX_MASS_CHECK = 10
