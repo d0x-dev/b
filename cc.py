@@ -173,5 +173,5 @@ class StripeProcessor:
 # Create global processor instance
 processor_at = StripeProcessor()
 
-def check_cc_card(ccx):
+def process_card_cc(ccx):
     return processor_at.process_card_at(ccx)
