@@ -1831,22 +1831,19 @@ def handle_broadcast(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    # --- hard guard: don't process this update twice for the same chat ---
-    if not hasattr(bot, "user_data"):
-        bot.user_data = {}
-    last = bot.user_data.get(message.chat.id, {})
-    if last.get("last_update_id") == message.message_id:
-        return  # already handled
-    bot.user_data[message.chat.id] = {"last_update_id": message.message_id}
-
     save_user(message.from_user.id)
-
+    
+    # Get user information
     user = message.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
-    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message.date))
-    credits = "0"
-
+    join_date = message.date  # This is a timestamp, convert to readable format
+    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
+    
+    # Credits (you can implement your own credit system)
+    credits = "0"  # Default credits
+    
+    # Create the caption with formatting
     caption = f"""
 ↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
 
@@ -1858,38 +1855,83 @@ def handle_start(message):
 
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
-
-    # keyboard
+    
+    # Create inline keyboard buttons - 2 buttons per line
     markup = telebot.types.InlineKeyboardMarkup()
+    
+    # Row 1
     btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
     btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+    
+    # Row 2
     btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
     btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+    
+    # Row 3
     btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+    
+    # Add buttons to markup
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
     markup.row(btn5)
-
-    # --- send exactly one message ---
+    
+    # First try to send the video
     try:
         msg = bot.send_video(
             chat_id=message.chat.id,
-            data="https://t.me/video336/2",
+            video="https://t.me/video336/2",
             caption=caption,
-            parse_mode="HTML",
-            reply_markup=markup
+            parse_mode='HTML',
+            reply_markup=markup,
+            timeout=10  # Add timeout to prevent hanging
         )
-    except Exception:
-        msg = bot.send_message(
-            chat_id=message.chat.id,
-            text=caption + "\n\n🎥 Video preview unavailable",
-            parse_mode="HTML",
-            reply_markup=markup
-        )
-
-    # store welcome message id (optional)
-    bot.user_data[message.chat.id]["welcome_msg_id"] = msg.message_id
-
+        print("Video sent successfully")
+        
+    except Exception as e:
+        print(f"Video failed: {e}")
+        # If video fails, try sending as document
+        try:
+            msg = bot.send_document(
+                chat_id=message.chat.id,
+                document="https://t.me/video336/2",
+                caption=caption,
+                parse_mode='HTML',
+                reply_markup=markup,
+                timeout=10
+            )
+            print("Sent as document")
+            
+        except Exception as e2:
+            print(f"Document also failed: {e2}")
+            # If both fail, send text message with thumbnail
+            try:
+                # Try to send with a photo first
+                msg = bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo="https://img.icons8.com/fluency/96/000000/telegram-app.png",
+                    caption=caption,
+                    parse_mode='HTML',
+                    reply_markup=markup,
+                    timeout=10
+                )
+                print("Sent with photo")
+                
+            except Exception as e3:
+                print(f"Photo failed: {e3}")
+                # Final fallback: plain text message
+                msg = bot.send_message(
+                    chat_id=message.chat.id,
+                    text=caption,
+                    parse_mode='HTML',
+                    reply_markup=markup,
+                    disable_web_page_preview=True
+                )
+                print("Sent plain text message")
+    
+    # Store message ID for callback handling
+    if not hasattr(bot, 'user_data'):
+        bot.user_data = {}
+    bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
 
 # Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
