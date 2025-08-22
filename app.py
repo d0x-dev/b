@@ -761,6 +761,246 @@ def handle_mat(message):
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
+# Add this import at the top with other imports
+import re
+
+# Add this function to handle the gate command
+def check_gate_url(url):
+    """
+    Check a URL for payment gateways, captcha, and other security features
+    """
+    try:
+        def normalize_url(url):
+            url = url.strip()
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            return url
+
+        def is_valid_url(url):
+            try:
+                url = normalize_url(url)
+                regex = re.compile(
+                    r'^(?:http|ftp)s?://'
+                    r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
+                    r'localhost|'
+                    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'
+                    r'\[?[A-F0-9]*:[A-Z0-9:]+\]?)'
+                    r'(?::\d+)?'
+                    r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+                return re.match(regex, url) is not None
+            except:
+                return False
+
+        def find_payment_gateways(response_text):
+            gateways = [
+                "paypal", "stripe", "braintree", "square", "cybersource", "authorize.net", "2checkout",
+                "adyen", "worldpay", "sagepay", "checkout.com", "shopify", "razorpay", "bolt", "paytm",
+                "venmo", "pay.google.com", "revolut", "eway", "woocommerce", "upi", "apple.com", "payflow",
+                "payeezy", "paddle", "payoneer", "recurly", "klarna", "paysafe", "webmoney", "payeer",
+                "payu", "skrill", "affirm", "afterpay", "dwolla", "global payments", "moneris", "nmi",
+                "payment cloud", "paysimple", "paytrace", "stax", "alipay", "bluepay", "paymentcloud",
+                "clover", "zelle", "google pay", "cashapp", "wechat pay", "transferwise", "stripe connect",
+                "mollie", "sezzle", "payza", "gocardless", "bitpay", "sureship", "conekta", 
+                "fatture in cloud", "payzaar", "securionpay", "paylike", "nexi", "forte", "worldline", "payu latam"
+            ]
+            return [g.capitalize() for g in gateways if g in response_text.lower()]
+
+        def check_captcha(response_text):
+            keywords = {
+                'recaptcha': ['recaptcha', 'google recaptcha'],
+                'image selection': ['click images', 'identify objects', 'select all'],
+                'text-based': ['enter the characters', 'type the text', 'solve the puzzle'],
+                'verification': ['prove you are not a robot', 'human verification', 'bot check'],
+                'hcaptcha': [
+                    'hcaptcha', 'verify you are human', 'select images', 'cloudflare challenge',
+                    'anti-bot verification', 'hcaptcha.com', 'hcaptcha-widget'
+                ]
+            }
+
+            detected = []
+            for typ, keys in keywords.items():
+                for key in keys:
+                    if re.search(rf'\b{re.escape(key)}\b', response_text, re.IGNORECASE):
+                        if typ not in detected:
+                            detected.append(typ)
+
+            if re.search(r'<iframe.*?src=".*?hcaptcha.*?".*?>', response_text, re.IGNORECASE):
+                if 'hcaptcha' not in detected:
+                    detected.append('hcaptcha')
+
+            return detected if detected else ['No captcha detected']
+
+        def detect_cloudflare(response):
+            headers = response.headers
+            if 'cf-ray' in headers or 'cloudflare' in headers.get('server', '').lower():
+                return "Cloudflare"
+            if '__cf_bm' in response.cookies or '__cfduid' in response.cookies:
+                return "Cloudflare"
+            if 'cf-chl' in response.text.lower() or 'cloudflare challenge' in response.text.lower():
+                return "Cloudflare"
+            return "None"
+
+        def detect_3d_secure(response_text):
+            keywords = [
+                "3d secure", "3ds", "3-d secure", "threeds", "acs", 
+                "authentication required", "secure authentication", 
+                "secure code", "otp verification", "verified by visa",
+                "mastercard securecode", "3dsecure"
+            ]
+            for keyword in keywords:
+                if keyword in response_text.lower():
+                    return "3D (3D Secure Enabled)"
+            return "2D (No 3D Secure Found)"
+
+        # Main checking logic
+        url = normalize_url(url)
+        if not is_valid_url(url):
+            return {
+                "error": "Invalid URL",
+                "status": "failed",
+                "status_code": 400
+            }
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+            'Referer': 'https://www.google.com'
+        }
+
+        response = requests.get(url, headers=headers, timeout=10)
+
+        if response.status_code == 403:
+            for attempt in range(3):
+                time.sleep(2 ** attempt)
+                response = requests.get(url, headers=headers, timeout=10)
+                if response.status_code != 403:
+                    break
+
+        if response.status_code == 403:
+            return {
+                "error": "403 Forbidden: Access Denied",
+                "status": "failed",
+                "status_code": 403
+            }
+
+        response.raise_for_status()
+
+        detected_gateways = find_payment_gateways(response.text)
+        captcha_type = check_captcha(response.text)
+        cloudflare_status = detect_cloudflare(response)
+        secure_type = detect_3d_secure(response.text)
+        cvv_present = "cvv" in response.text.lower() or "cvc" in response.text.lower()
+        system = "WooCommerce" if "woocommerce" in response.text.lower() else (
+                 "Shopify" if "shopify" in response.text.lower() else "Not Detected")
+
+        return {
+            "url": url,
+            "status": "success",
+            "status_code": response.status_code,
+            "payment_gateways": detected_gateways or ["None Detected"],
+            "captcha": captcha_type,
+            "cloudflare": cloudflare_status,
+            "security": secure_type,
+            "cvv_cvc_status": "Requested" if cvv_present else "Unknown",
+            "inbuilt_system": system
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        return {
+            "error": f"HTTP Error: {str(http_err)}",
+            "status": "failed",
+            "status_code": 500
+        }
+    except requests.exceptions.RequestException as req_err:
+        return {
+            "error": f"Request Error: {str(req_err)}",
+            "status": "failed",
+            "status_code": 500
+        }
+    except Exception as e:
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "status": "failed",
+            "status_code": 500
+        }
+
+# Add this function to format the gate check result
+def format_gate_result(result, mention, user_status, time_taken):
+    if result.get('status') == 'failed':
+        return f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ❌</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <code>{result.get('error', 'Unknown error')}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 𝐂𝐨𝐝𝐞 ➳ <i>{result.get('status_code', 'N/A')}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {user_status} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+    
+    # Format payment gateways as string
+    payment_gateways = ", ".join(result.get('payment_gateways', []))
+    captcha_types = ", ".join(result.get('captcha', []))
+    
+    return f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐢𝐭𝐞 ➳ <code>{result.get('url', 'N/A')}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ <i>{payment_gateways}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ <i>{captcha_types}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ <i>{result.get('cloudflare', 'Unknown')}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ <i>{result.get('security', 'Unknown')}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐕𝐕/𝐂𝐕𝐂 ➳ <i>{result.get('cvv_cvc_status', 'Unknown')}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐈𝐧𝐛𝐮𝐢𝐥𝐭 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <i>{result.get('inbuilt_system', 'Unknown')}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <i>{result.get('status_code', 'N/A')}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {user_status} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗢𝗧𝗔𝗟 𝗧𝗜𝗠𝗘 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+
+# Add this handler for the gate command
+@bot.message_handler(commands=['gate'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.gate'))
+def handle_gate(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    # Extract URL from message
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "Please provide a URL to check. Example: /gate https://example.com")
+        return
+    
+    url = command_parts[1]
+    
+    # Get user info
+    user_status = get_user_status(message.from_user.id)
+    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+    
+    # Send processing message
+    processing_msg = f"<a href='https://t.me/stormxvup'>🔍 Checking URL: {url}</a>"
+    status_message = bot.reply_to(message, processing_msg, parse_mode='HTML')
+    
+    # Start timer
+    start_time = time.time()
+    
+    # Check URL
+    result = check_gate_url(url)
+    
+    # Calculate time taken
+    end_time = time.time()
+    time_taken = round(end_time - start_time, 2)
+    
+    # Format and send final response
+    response_text = format_gate_result(result, mention, user_status, time_taken)
+    
+    # Edit the original message with the final result
+    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                         text=response_text, parse_mode='HTML')
+
 # Broadcast function for owner/admin
 @bot.message_handler(commands=['broadcast'])
 def handle_broadcast(message):
