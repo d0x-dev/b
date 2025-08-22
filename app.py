@@ -167,7 +167,7 @@ def handle_chk(message):
     bin_info = get_bin_info(bin_number) or {}
     
     # Send checking status message
-    checking_msg = checking_status_format(cc, "Stripe Auth", bin_info)
+    checking_msg = checking_status_format(cc, "Stripe Auth 2th 2th", bin_info)
     status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
     
     # Start timer
@@ -222,7 +222,7 @@ def handle_au(message):
     bin_info = get_bin_info(bin_number) or {}
     
     # Send checking status message
-    checking_msg = checking_status_format(cc, "Stripe AU", bin_info)
+    checking_msg = checking_status_format(cc, "Stripe Auth 2", bin_info)
     status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
     
     # Start timer
@@ -321,10 +321,10 @@ STATUS_EMOJIS = {
 
 # Add this function for mass check formatting
 def format_mass_check(results, total_cards, processing_time, gateway, checked=0):
-    approved = sum(1 for r in results if r['status'] == 'APPROVED')
+    approved = sum(1 for r in results if r['status'] == 'Approved')
     ccn = sum(1 for r in results if r['status'] == 'CCN')
-    declined = sum(1 for r in results if r['status'] == 'DECLINED')
-    errors = sum(1 for r in results if r['status'] == 'ERROR')
+    declined = sum(1 for r in results if r['status'] == 'Declined')
+    errors = sum(1 for r in results if r['status'] == 'ERROR' , 'Error')
     
     response = f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
@@ -345,7 +345,7 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
     return response
 
 # Add this function for mass check while checking format
-def format_mass_check_processing(total_cards, checked=0, gateway="Stripe Auth"):
+def format_mass_check_processing(total_cards, checked=0, gateway="Stripe Auth 2th"):
     return f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
@@ -362,6 +362,10 @@ def format_mass_check_processing(total_cards, checked=0, gateway="Stripe Auth"):
 MAX_MASS_CHECK = 10
 
 # Add these handler functions
+# Add this import at the top
+import concurrent.futures
+
+# Update the mass check handlers
 @bot.message_handler(commands=['mchk'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mchk'))
 def handle_mchk(message):
@@ -398,47 +402,65 @@ def handle_mchk(message):
             cards = cards[:MAX_MASS_CHECK]
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
         
-        # Get gateway from checking the first card
-        first_card_result = check_card(cards[0])
-        gateway = first_card_result.get("gateway", "Stripe Auth")
+        # Send immediate processing message
+        initial_msg = f"🚀 Starting mass check of {len(cards)} cards..."
+        status_message = bot.reply_to(message, initial_msg)
         
-        # Send initial processing message
-        initial_msg = format_mass_check_processing(len(cards), 0, gateway)
-        status_message = bot.reply_to(message, initial_msg, parse_mode='HTML')
+        # Get gateway from first card quickly
+        try:
+            first_card_result = check_card(cards[0])
+            gateway = first_card_result.get("gateway", "Stripe Auth 2th")
+        except:
+            gateway = "Stripe Auth 2th"
+        
+        # Update with proper format
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        try:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                text=initial_processing_msg, parse_mode='HTML')
+        except:
+            pass
         
         # Start timer
         start_time = time.time()
         
-        # Process cards in a separate thread to avoid blocking
+        # Process cards in background thread
         def process_cards():
             try:
                 results = []
-                for i, card in enumerate(cards):
-                    try:
-                        result = check_card(card)
-                        results.append({
-                            'card': card,
-                            'status': result['status'],
-                            'response': result['response'],
-                            'gateway': result.get('gateway', 'Stripe Auth')
-                        })
+                
+                # Process cards with thread pool for better performance
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    # Submit all card checking tasks
+                    future_to_card = {executor.submit(check_card, card): card for card in cards}
+                    
+                    # Process results as they complete
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_card), 1):
+                        card = future_to_card[future]
+                        try:
+                            result = future.result()
+                            results.append({
+                                'card': card,
+                                'status': result['status'],
+                                'response': result['response'],
+                                'gateway': result.get('gateway', 'Stripe Auth 2th')
+                            })
+                        except Exception as e:
+                            results.append({
+                                'card': card,
+                                'status': 'ERROR',
+                                'response': f'Error: {str(e)}',
+                                'gateway': gateway
+                            })
                         
-                        # Update progress every card
+                        # Update progress after each card
                         current_time = time.time() - start_time
-                        progress_msg = format_mass_check(results, len(cards), current_time, gateway, i + 1)
+                        progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
                         try:
                             bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
                                                 text=progress_msg, parse_mode='HTML')
                         except:
-                            pass  # Ignore edit errors
-                            
-                    except Exception as e:
-                        results.append({
-                            'card': card,
-                            'status': 'ERROR',
-                            'response': f'Error: {str(e)}',
-                            'gateway': gateway
-                        })
+                            pass
                 
                 # Final update
                 final_time = time.time() - start_time
@@ -500,47 +522,65 @@ def handle_mass(message):
             cards = cards[:MAX_MASS_CHECK]
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
         
-        # Get gateway from checking the first card
-        first_card_result = process_card_au(cards[0])
-        gateway = first_card_result.get("gateway", "Stripe AU")
+        # Send immediate processing message
+        initial_msg = f"🚀 Starting mass AU check of {len(cards)} cards..."
+        status_message = bot.reply_to(message, initial_msg)
         
-        # Send initial processing message
-        initial_msg = format_mass_check_processing(len(cards), 0, gateway)
-        status_message = bot.reply_to(message, initial_msg, parse_mode='HTML')
+        # Get gateway from first card quickly
+        try:
+            first_card_result = process_card_au(cards[0])
+            gateway = first_card_result.get("gateway", "Stripe Auth 2")
+        except:
+            gateway = "Stripe Auth 2"
+        
+        # Update with proper format
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        try:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                text=initial_processing_msg, parse_mode='HTML')
+        except:
+            pass
         
         # Start timer
         start_time = time.time()
         
-        # Process cards in a separate thread to avoid blocking
+        # Process cards in background thread
         def process_cards():
             try:
                 results = []
-                for i, card in enumerate(cards):
-                    try:
-                        result = process_card_au(card)
-                        results.append({
-                            'card': card,
-                            'status': result['status'],
-                            'response': result['response'],
-                            'gateway': result.get('gateway', 'Stripe AU')
-                        })
+                
+                # Process cards with thread pool for better performance
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    # Submit all card checking tasks
+                    future_to_card = {executor.submit(process_card_au, card): card for card in cards}
+                    
+                    # Process results as they complete
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_card), 1):
+                        card = future_to_card[future]
+                        try:
+                            result = future.result()
+                            results.append({
+                                'card': card,
+                                'status': result['status'],
+                                'response': result['response'],
+                                'gateway': result.get('gateway', 'Stripe Auth 2')
+                            })
+                        except Exception as e:
+                            results.append({
+                                'card': card,
+                                'status': 'ERROR',
+                                'response': f'Error: {str(e)}',
+                                'gateway': gateway
+                            })
                         
-                        # Update progress every card
+                        # Update progress after each card
                         current_time = time.time() - start_time
-                        progress_msg = format_mass_check(results, len(cards), current_time, gateway, i + 1)
+                        progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
                         try:
                             bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
                                                 text=progress_msg, parse_mode='HTML')
                         except:
-                            pass  # Ignore edit errors
-                            
-                    except Exception as e:
-                        results.append({
-                            'card': card,
-                            'status': 'ERROR',
-                            'response': f'Error: {str(e)}',
-                            'gateway': gateway
-                        })
+                            pass
                 
                 # Final update
                 final_time = time.time() - start_time
