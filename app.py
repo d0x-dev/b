@@ -770,6 +770,178 @@ def handle_mat(message):
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
+from vbv import check_vbv_card  # Add this import at the top
+
+# Add these handler functions
+@bot.message_handler(commands=['vbv'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.vbv'))
+def handle_vbv(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    # Extract CC details from message
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV")
+        return
+    
+    cc = command_parts[1]
+    if '|' not in cc:
+        bot.reply_to(message, "Invalid format. Use: CC|MM|YY|CVV")
+        return
+    
+    # Get user info
+    user_status = get_user_status(message.from_user.id)
+    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+    
+    # Get bin info
+    bin_number = cc.split('|')[0][:6]
+    bin_info = get_bin_info(bin_number) or {}
+    
+    # Send checking status message
+    checking_msg = checking_status_format(cc, "3DS Lookup", bin_info)
+    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
+    
+    # Start timer
+    start_time = time.time()
+    
+    # Check VBV status
+    check_result = check_vbv_card(cc)
+    
+    # Calculate time taken
+    end_time = time.time()
+    time_taken = round(end_time - start_time, 2)
+    
+    # Format and send final response
+    response_text = single_check_format(
+        cc=cc,
+        gateway=check_result["gateway"],
+        response=check_result["response"],
+        mention=mention,
+        Userstatus=user_status,
+        bin_info=bin_info,
+        time_taken=time_taken,
+        status=check_result["status"]
+    )
+    
+    # Edit the original message with the final result
+    try:
+        bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                             text=response_text, parse_mode='HTML')
+    except:
+        bot.send_message(message.chat.id, response_text, parse_mode='HTML')
+
+@bot.message_handler(commands=['mvbv'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mvbv'))
+def handle_mvbv(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    try:
+        cards_text = None
+        command_parts = message.text.split()
+        
+        # Check if cards are provided after command
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
+            cards_text = message.reply_to_message.text
+        else:
+            bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
+            return
+            
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+        
+        if not cards:
+            bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
+            return
+        
+        # Limit to MAX_MASS_CHECK cards
+        if len(cards) > MAX_MASS_CHECK:
+            cards = cards[:MAX_MASS_CHECK]
+            bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
+        
+        # Send immediate processing message
+        initial_msg = f"🚀 Starting mass VBV check of {len(cards)} cards..."
+        status_message = bot.reply_to(message, initial_msg)
+        
+        # Gateway for VBV is always "3DS Lookup"
+        gateway = "3DS Lookup"
+        
+        # Update with proper format
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        try:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                text=initial_processing_msg, parse_mode='HTML')
+        except:
+            pass
+        
+        # Start timer
+        start_time = time.time()
+        
+        # Process cards in background thread
+        def process_cards():
+            try:
+                results = []
+                
+                # Process cards sequentially (VBV check is fast and doesn't need threading)
+                for i, card in enumerate(cards, 1):
+                    try:
+                        result = check_vbv_card(card)
+                        results.append({
+                            'card': card,
+                            'status': result['status'],
+                            'response': result['response'],
+                            'gateway': result.get('gateway', '3DS Lookup')
+                        })
+                    except Exception as e:
+                        results.append({
+                            'card': card,
+                            'status': 'ERROR',
+                            'response': f'Error: {str(e)}',
+                            'gateway': gateway
+                        })
+                    
+                    # Update progress after each card
+                    current_time = time.time() - start_time
+                    progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                    try:
+                        bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                            text=progress_msg, parse_mode='HTML')
+                    except:
+                        pass
+                
+                # Final update
+                final_time = time.time() - start_time
+                final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+                try:
+                    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                        text=final_msg, parse_mode='HTML')
+                except Exception as e:
+                    bot.send_message(message.chat.id, f"Error updating final message: {str(e)}")
+                    
+            except Exception as e:
+                error_msg = f"Mass VBV check failed: {str(e)}"
+                try:
+                    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                        text=error_msg, parse_mode='HTML')
+                except:
+                    bot.send_message(message.chat.id, error_msg)
+        
+        # Run in background thread
+        thread = threading.Thread(target=process_cards)
+        thread.start()
+    
+    except Exception as e:
+        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+
 # Add this import at the top with other imports
 import re
 
