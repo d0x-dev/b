@@ -357,7 +357,7 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
     return response
 
 # Add this function for mass check while checking format
-def format_mass_check_processing(total_cards, checked=0):
+def format_mass_check_processing(total_cards, checked=0 , gateway=stripe):
     return f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
