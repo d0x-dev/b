@@ -1948,31 +1948,31 @@ def handle_callback(call):
 
 Choose a payment gateway to check your cards
 """
-        # Create gateway selection buttons
+        # Create gateway selection buttons (2 buttons per row)
         markup = telebot.types.InlineKeyboardMarkup()
         
-        # Row 1
+        # Rows with 2 buttons each
         btn1 = telebot.types.InlineKeyboardButton("Stripe", callback_data="gateway_stripe")
         btn2 = telebot.types.InlineKeyboardButton("Braintree", callback_data="gateway_braintree")
-        btn3 = telebot.types.InlineKeyboardButton("3DS Lookup", callback_data="gateway_3ds")
+        markup.row(btn1, btn2)
         
-        # Row 2
+        btn3 = telebot.types.InlineKeyboardButton("3DS Lookup", callback_data="gateway_3ds")
         btn4 = telebot.types.InlineKeyboardButton("Square", callback_data="gateway_square")
+        markup.row(btn3, btn4)
+        
         btn5 = telebot.types.InlineKeyboardButton("Paypal", callback_data="gateway_paypal")
         btn6 = telebot.types.InlineKeyboardButton("Site Based", callback_data="gateway_site")
+        markup.row(btn5, btn6)
         
-        # Row 3
         btn7 = telebot.types.InlineKeyboardButton("Authnet", callback_data="gateway_authnet")
         btn8 = telebot.types.InlineKeyboardButton("Adyen", callback_data="gateway_adyen")
+        markup.row(btn7, btn8)
+        
         btn9 = telebot.types.InlineKeyboardButton("Auto Shopify", callback_data="gateway_shopify")
+        markup.row(btn9)
         
-        # Row 4 - Back button
+        # Back button
         btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
-        
-        # Add buttons to markup
-        markup.row(btn1, btn2, btn3)
-        markup.row(btn4, btn5, btn6)
-        markup.row(btn7, btn8, btn9)
         markup.row(btn_back)
         
         try:
@@ -2138,7 +2138,7 @@ Choose a payment gateway to check your cards
 [⸙] 𝐍𝐀𝐌𝐄: <i>Site Based Charge</i>
 [⸙] 𝐂𝐌𝐃: /cc [Single]
 [⸙] 𝐂𝐌𝐃: /mcc [Mass]
-[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+[⸙] 𝐒𝐭𝐎𝐭𝐮𝐬: Active ✅
 """
         # Create back button
         markup = telebot.types.InlineKeyboardMarkup()
@@ -2306,7 +2306,7 @@ Choose a payment gateway to check your cards
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴅ ⌁ 0
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ 0
 
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴜ ɴᴀᴠɪɢᴀᴛᴇ
 """
         try:
             bot.edit_message_caption(
