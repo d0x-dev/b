@@ -1829,7 +1829,6 @@ def handle_broadcast(message):
     
     bot.reply_to(message, f"Broadcast sent to {sent_count} users.")
 
-# Start command
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     save_user(message.from_user.id)
@@ -1857,122 +1856,196 @@ def handle_start(message):
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
     
-    # Create inline keyboard buttons
+    # Create inline keyboard buttons - 2 buttons per line
     markup = telebot.types.InlineKeyboardMarkup()
     
     # Row 1
-    btn1 = telebot.types.InlineKeyboardButton("🔍 Single Check", callback_data="single_check")
-    btn2 = telebot.types.InlineKeyboardButton("📊 Mass Check", callback_data="mass_check")
+    btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
+    btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
     
     # Row 2
-    btn3 = telebot.types.InlineKeyboardButton("🌐 Gate Check", callback_data="gate_check")
-    btn4 = telebot.types.InlineKeyboardButton("💳 BIN Lookup", callback_data="bin_lookup")
+    btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
+    btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
     
     # Row 3
-    btn5 = telebot.types.InlineKeyboardButton("📋 Commands List", callback_data="commands_list")
-    btn6 = telebot.types.InlineKeyboardButton("💎 Buy Credits", callback_data="buy_credits")
-    
-    # Row 4
-    btn7 = telebot.types.InlineKeyboardButton("👤 Profile", callback_data="profile")
-    btn8 = telebot.types.InlineKeyboardButton("📞 Support", url="https://t.me/stormxvup")
+    btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
     
     # Add buttons to markup
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
-    markup.row(btn5, btn6)
-    markup.row(btn7, btn8)
+    markup.row(btn5)
     
     # Send video with caption and buttons
     try:
-        bot.send_video(
+        msg = bot.send_video(
             message.chat.id,
             "https://t.me/video336/2",
             caption=caption,
             parse_mode='HTML',
             reply_markup=markup
         )
+        # Store message ID for later editing
+        bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
     except Exception as e:
         # Fallback to text message if video fails
-        bot.send_message(
+        msg = bot.send_message(
             message.chat.id,
             caption + "\n\n🎥 Video preview unavailable",
             parse_mode='HTML',
             reply_markup=markup
         )
+        bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
 
 # Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    if call.data == "single_check":
-        bot.answer_callback_query(call.id, "Use: .chk CC|MM|YY|CVV")
-        bot.send_message(call.message.chat.id, "🔍 <b>Single Check Commands:</b>\n\n<code>.chk 5245344401022026|08|2027|369</code>\n<code>.vbv 5245344401022026|08|2027|369</code>\n<code>.py 5245344401022026|08|2027|369</code>\n<code>.qq 5245344401022026|08|2027|369</code>\n<code>.cc 5245344401022026|08|2027|369</code>", parse_mode='HTML')
+    user = call.from_user
+    mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
+    username = f"@{user.username}" if user.username else "None"
+    credits = "0"  # Default credits
     
-    elif call.data == "mass_check":
-        bot.answer_callback_query(call.id, "Use: .mchk (reply to cards)")
-        bot.send_message(call.message.chat.id, "📊 <b>Mass Check Commands:</b>\n\n<code>.mchk</code> (reply to cards)\n<code>.mvbv</code> (reply to cards)\n<code>.mpy</code> (reply to cards)\n<code>.mqq</code> (reply to cards)\n<code>.mcc</code> (reply to cards)", parse_mode='HTML')
-    
-    elif call.data == "gate_check":
-        bot.answer_callback_query(call.id, "Use: .gate URL")
-        bot.send_message(call.message.chat.id, "🌐 <b>Gate Check:</b>\n\n<code>.gate https://example.com</code>\n\nCheck payment gateways, captcha, and security features of any website.", parse_mode='HTML')
-    
-    elif call.data == "bin_lookup":
-        bot.answer_callback_query(call.id, "Use: .bin BIN")
-        bot.send_message(call.message.chat.id, "💳 <b>BIN Lookup:</b>\n\n<code>.bin 524534</code>\n<code>.bin 52453444|02|2026</code>\n<code>.bin 52453444|02|2026|144</code>\n\nGet detailed information about any BIN number.", parse_mode='HTML')
-    
-    elif call.data == "commands_list":
-        bot.answer_callback_query(call.id, "Here's the commands list")
-        commands_text = """
-🤖 <b>Storm X Bot Commands:</b>
+    if call.data == "gateways":
+        # Edit caption to show gateways information
+        gateways_text = f"""
+🔍 <b>Gateways Available:</b>
 
-🔍 <b>Single Check:</b>
-<code>.chk</code> CC|MM|YY|CVV - Stripe Auth
-<code>.vbv</code> CC|MM|YY|CVV - 3DS Lookup
-<code>.py</code> CC|MM|YY|CVV - PayPal [0.1$]
-<code>.qq</code> CC|MM|YY|CVV - Stripe Square [0.20$]
-<code>.cc</code> CC|MM|YY|CVV - Site Based [1$]
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.chk</code> - Stripe Auth 2th
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.vbv</code> - 3DS Lookup
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.py</code> - Paypal [0.1$]
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.qq</code> - Stripe Square [0.20$]
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.cc</code> - Site Based [1$]
 
-📊 <b>Mass Check:</b>
-<code>.mchk</code> - Mass Stripe Auth
-<code>.mvbv</code> - Mass 3DS Lookup
-<code>.mpy</code> - Mass PayPal
-<code>.mqq</code> - Mass Stripe Square
-<code>.mcc</code> - Mass Site Based
+📊 <b>Mass Check Commands:</b>
+<code>.mchk</code> <code>.mvbv</code> <code>.mpy</code> 
+<code>.mqq</code> <code>.mcc</code>
 
-🌐 <b>Other Commands:</b>
-<code>.gate</code> URL - Gate Checker
-<code>.bin</code> BIN - BIN Lookup
-<code>.broadcast</code> - Admin broadcast
-
-💎 <b>Support:</b>
-@stormxvup - For help and support
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
 """
-        bot.send_message(call.message.chat.id, commands_text, parse_mode='HTML')
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=gateways_text,
+                parse_mode='HTML',
+                reply_markup=call.message.reply_markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Gateways information displayed")
     
-    elif call.data == "buy_credits":
-        bot.answer_callback_query(call.id, "Contact @stormxvup for credits")
-        bot.send_message(call.message.chat.id, "💎 <b>Buy Credits:</b>\n\nContact @stormxvup to purchase credits and unlock premium features!", parse_mode='HTML')
+    elif call.data == "tools":
+        # Edit caption to show tools information
+        tools_text = f"""
+🛠️ <b>Available Tools:</b>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.gate</code> URL - Gate Checker
+• Check payment gateways, captcha, and security
+
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.bin</code> BIN - BIN Lookup  
+• Get detailed BIN information
+
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.au</code> - Stripe Auth 2
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.at</code> - Authnet [5$]
+
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
+"""
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=tools_text,
+                parse_mode='HTML',
+                reply_markup=call.message.reply_markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Tools information displayed")
     
-    elif call.data == "profile":
-        # Show user profile again
-        user = call.from_user
-        mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
-        username = f"@{user.username}" if user.username else "None"
-        credits = "0"  # Default credits
-        
-        profile_text = f"""
-👤 <b>Your Profile:</b>
+    elif call.data == "help":
+        # Edit caption to show help information
+        help_text = f"""
+❓ <b>Help & Support</b>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> <b>How to use:</b>
+• Use commands like <code>.chk CC|MM|YY|CVV</code>
+• For mass check, reply to message with cards using <code>.mchk</code>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> <b>Support:</b>
+• Channel: @stormxvup
+• Contact for help and credits
+
+<a href='https://t.me/stormxvup'>[⸙]</a> <b>Note:</b>
+• Always use valid card formats
+• Results may vary by gateway
+
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
+"""
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=help_text,
+                parse_mode='HTML',
+                reply_markup=call.message.reply_markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Help information displayed")
+    
+    elif call.data == "myinfo":
+        # Edit caption to show user info
+        myinfo_text = f"""
+👤 <b>Your Information:</b>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀ ɪᴅ ⌁ <code>{user.id}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
 
-📊 <b>Usage Stats:</b>
-• Total Checks: 0
-• Approved: 0
-• Declined: 0
+📊 <b>Usage Statistics:</b>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴛᴏᴛᴀʟ ᴄʜᴇᴄᴋs ⌁ 0
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴅ ⌁ 0
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ 0
+
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
 """
-        bot.send_message(call.message.chat.id, profile_text, parse_mode='HTML')
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=myinfo_text,
+                parse_mode='HTML',
+                reply_markup=call.message.reply_markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Your information displayed")
+    
+    elif call.data == "back_to_main":
+        # Return to main welcome screen
+        join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(call.message.date))
+        main_text = f"""
+↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
+
+<a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
+
+↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
+"""
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=main_text,
+                parse_mode='HTML',
+                reply_markup=call.message.reply_markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Returned to main menu")
 
 # Run the bot
 if __name__ == "__main__":
