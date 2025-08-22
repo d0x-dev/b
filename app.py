@@ -324,7 +324,7 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
     approved = sum(1 for r in results if r['status'] == 'Approved')
     ccn = sum(1 for r in results if r['status'] == 'CCN')
     declined = sum(1 for r in results if r['status'] == 'Declined')
-    errors = sum(1 for r in results if r['status'] == 'ERROR' , 'Error')
+    errors = sum(1 for r in results if r['status'] == 'ERROR')
     
     response = f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
