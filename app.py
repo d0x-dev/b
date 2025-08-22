@@ -355,8 +355,6 @@ def format_mass_check_processing(total_cards, checked=0, gateway="Stripe Auth 2t
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>0</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>0.00 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
 
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>Processing cards...</a>"""
 
 # Add these constants at the top with other configurations
 MAX_MASS_CHECK = 10
@@ -403,7 +401,7 @@ def handle_mchk(message):
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
         
         # Send immediate processing message
-        initial_msg = f"<pre>↯ Starting Mass Stripe Auth Check of {len(cards)} Cards...</pre>"
+        initial_msg = f"```↯ Starting Mass Stripe Auth Check of {len(cards)} Cards...```"
         status_message = bot.reply_to(message, initial_msg)
         
         # Get gateway from first card quickly
@@ -523,7 +521,7 @@ def handle_mass(message):
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
         
         # Send immediate processing message
-        initial_msg = f"<pre>↯ Starting Mass Stripe 2 Check of {len(cards)} cards...</pre>"
+        initial_msg = f"```↯ Starting Mass Stripe 2 Check of {len(cards)} cards...```"
         status_message = bot.reply_to(message, initial_msg)
         
         # Get gateway from first card quickly
