@@ -619,6 +619,148 @@ def handle_mass(message):
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
+# Add this function for mass AT check
+def process_mass_at_check(cards):
+    results = []
+    for card in cards:
+        try:
+            result = process_card_at(card)
+            results.append({
+                'card': card,
+                'status': result['status'],
+                'response': result['response'],
+                'gateway': result.get('gateway', 'Authnet [5$]')
+            })
+        except Exception as e:
+            results.append({
+                'card': card,
+                'status': 'ERROR',
+                'response': f'Error: {str(e)}',
+                'gateway': 'Authnet [5$]'
+            })
+    return results
+
+# Add this handler for mass AT check command
+@bot.message_handler(commands=['mat'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mat'))
+def handle_mat(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    try:
+        cards_text = None
+        command_parts = message.text.split()
+        
+        # Check if cards are provided after command
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
+            cards_text = message.reply_to_message.text
+        else:
+            bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
+            return
+            
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+        
+        if not cards:
+            bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
+            return
+        
+        # Limit to MAX_MASS_CHECK cards
+        if len(cards) > MAX_MASS_CHECK:
+            cards = cards[:MAX_MASS_CHECK]
+            bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
+        
+        # Send immediate processing message
+        initial_msg = f"🚀 Starting mass AT check of {len(cards)} cards..."
+        status_message = bot.reply_to(message, initial_msg)
+        
+        # Get gateway from first card quickly
+        try:
+            first_card_result = process_card_at(cards[0])
+            gateway = first_card_result.get("gateway", "Authnet [5$]")
+        except:
+            gateway = "Authnet [5$]"
+        
+        # Update with proper format
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        try:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                text=initial_processing_msg, parse_mode='HTML')
+        except:
+            pass
+        
+        # Start timer
+        start_time = time.time()
+        
+        # Process cards in background thread
+        def process_cards():
+            try:
+                results = []
+                
+                # Process cards with thread pool for better performance
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    # Submit all card checking tasks
+                    future_to_card = {executor.submit(process_card_at, card): card for card in cards}
+                    
+                    # Process results as they complete
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_card), 1):
+                        card = future_to_card[future]
+                        try:
+                            result = future.result()
+                            results.append({
+                                'card': card,
+                                'status': result['status'],
+                                'response': result['response'],
+                                'gateway': result.get('gateway', 'Authnet [5$]')
+                            })
+                        except Exception as e:
+                            results.append({
+                                'card': card,
+                                'status': 'ERROR',
+                                'response': f'Error: {str(e)}',
+                                'gateway': gateway
+                            })
+                        
+                        # Update progress after each card
+                        current_time = time.time() - start_time
+                        progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                        try:
+                            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                                text=progress_msg, parse_mode='HTML')
+                        except:
+                            pass
+                
+                # Final update
+                final_time = time.time() - start_time
+                final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+                try:
+                    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                        text=final_msg, parse_mode='HTML')
+                except Exception as e:
+                    bot.send_message(message.chat.id, f"Error updating final message: {str(e)}")
+                    
+            except Exception as e:
+                error_msg = f"Mass AT check failed: {str(e)}"
+                try:
+                    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                        text=error_msg, parse_mode='HTML')
+                except:
+                    bot.send_message(message.chat.id, error_msg)
+        
+        # Run in background thread
+        thread = threading.Thread(target=process_cards)
+        thread.start()
+    
+    except Exception as e:
+        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
 # Broadcast function for owner/admin
 @bot.message_handler(commands=['broadcast'])
 def handle_broadcast(message):
