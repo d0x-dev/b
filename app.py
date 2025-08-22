@@ -42,13 +42,22 @@ def get_user_status(user_id):
     else:
         return "User"
 
-# Get bin information
 def get_bin_info(bin_number):
     try:
         url = f"https://bins.antipublic.cc/bins/{bin_number}"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            # Convert the API response to a consistent format
+            return {
+                'bin': data.get('bin', ''),
+                'brand': data.get('brand', 'None'),
+                'country': data.get('country_name', 'None'),
+                'country_flag': data.get('country_flag', ''),
+                'bank': data.get('bank', 'None'),
+                'type': data.get('type', 'None'),
+                'level': data.get('level', 'None')
+            }
         return None
     except:
         return None
@@ -1000,6 +1009,107 @@ def handle_gate(message):
     # Edit the original message with the final result
     bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
                          text=response_text, parse_mode='HTML')
+
+def format_bin_result(bin_info, bin_number, mention, user_status, time_taken):
+    if not bin_info:
+        return f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐁𝐈𝐍 𝐈𝐧𝐟𝐨 ❌</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <code>No information found for BIN: {bin_number}</code>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {user_status} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+    
+    # Extract bin information with fallbacks
+    bank = bin_info.get('bank', 'None')
+    brand = bin_info.get('brand', 'None')
+    card_type = bin_info.get('type', 'None')
+    country = bin_info.get('country', 'None')
+    country_flag = bin_info.get('country_flag', '')
+    level = bin_info.get('level', 'None')
+    
+    return f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐁𝐈𝐍 𝐈𝐧𝐟𝐨</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐈𝐍 ➳ <code>{bin_number}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ➳ {bank}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ➳ {brand}
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐲𝐩𝐞 ➳ {card_type}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {country} {country_flag}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐋𝐞𝐯𝐞𝐥 ➳ {level}
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {user_status} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+
+# Add this handler for the bin command
+@bot.message_handler(commands=['bin'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.bin'))
+def handle_bin(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    # Extract BIN from message
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "Please provide a BIN number. Example: /bin 524534 or .bin 52453444|02|2026")
+        return
+    
+    # Extract BIN from various formats
+    input_text = command_parts[1]
+    
+    # Handle different formats: .bin 52453444|02|2026, .bin 52453444|02|2026|144, .bin 52453444xxx|02|2026|746
+    # Extract first 6-8 digits from the input
+    bin_number = ""
+    for char in input_text:
+        if char.isdigit():
+            bin_number += char
+            if len(bin_number) >= 8:  # Get up to 8 digits
+                break
+        elif char == '|':  # Stop at pipe character
+            break
+    
+    # Ensure we have at least 6 digits
+    if len(bin_number) < 6:
+        bot.reply_to(message, "Please provide a valid BIN with at least 6 digits. Example: /bin 524534 or .bin 52453444|02|2026")
+        return
+    
+    # Take first 6-8 digits (most BIN APIs work with 6-8 digits)
+    bin_number = bin_number[:8]  # Use first 8 digits max
+    
+    # Get user info
+    user_status = get_user_status(message.from_user.id)
+    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+    
+    # Send processing message
+    processing_msg = f"<a href='https://t.me/stormxvup'>🔍 Checking BIN: {bin_number}</a>"
+    status_message = bot.reply_to(message, processing_msg, parse_mode='HTML')
+    
+    # Start timer
+    start_time = time.time()
+    
+    # Get BIN info using your existing function
+    bin_info = get_bin_info(bin_number) or {}
+    
+    # Calculate time taken
+    end_time = time.time()
+    time_taken = round(end_time - start_time, 2)
+    
+    # Format and send final response
+    response_text = format_bin_result(bin_info, bin_number, mention, user_status, time_taken)
+    
+    # Edit the original message with the final result
+    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                         text=response_text, parse_mode='HTML')
+
+# Also update your existing get_bin_info function to handle more cases if needed
+# Your existing get_bin_info function should work fine
 
 # Broadcast function for owner/admin
 @bot.message_handler(commands=['broadcast'])
