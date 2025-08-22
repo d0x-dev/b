@@ -1942,33 +1942,295 @@ def handle_callback(call):
     credits = "0"  # Default credits
     
     if call.data == "gateways":
-        # Edit caption to show gateways information
+        # Show gateway selection menu
         gateways_text = f"""
-🔍 <b>Gateways Available:</b>
+🔍 <b>Select Gateway Below:</b>
 
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.chk</code> - Stripe Auth 2th
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.vbv</code> - 3DS Lookup
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.py</code> - Paypal [0.1$]
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.qq</code> - Stripe Square [0.20$]
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.cc</code> - Site Based [1$]
-
-📊 <b>Mass Check Commands:</b>
-<code>.mchk</code> <code>.mvbv</code> <code>.mpy</code> 
-<code>.mqq</code> <code>.mcc</code>
-
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
+Choose a payment gateway to check your cards
 """
+        # Create gateway selection buttons
+        markup = telebot.types.InlineKeyboardMarkup()
+        
+        # Row 1
+        btn1 = telebot.types.InlineKeyboardButton("Stripe", callback_data="gateway_stripe")
+        btn2 = telebot.types.InlineKeyboardButton("Braintree", callback_data="gateway_braintree")
+        btn3 = telebot.types.InlineKeyboardButton("3DS Lookup", callback_data="gateway_3ds")
+        
+        # Row 2
+        btn4 = telebot.types.InlineKeyboardButton("Square", callback_data="gateway_square")
+        btn5 = telebot.types.InlineKeyboardButton("Paypal", callback_data="gateway_paypal")
+        btn6 = telebot.types.InlineKeyboardButton("Site Based", callback_data="gateway_site")
+        
+        # Row 3
+        btn7 = telebot.types.InlineKeyboardButton("Authnet", callback_data="gateway_authnet")
+        btn8 = telebot.types.InlineKeyboardButton("Adyen", callback_data="gateway_adyen")
+        btn9 = telebot.types.InlineKeyboardButton("Auto Shopify", callback_data="gateway_shopify")
+        
+        # Row 4 - Back button
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        
+        # Add buttons to markup
+        markup.row(btn1, btn2, btn3)
+        markup.row(btn4, btn5, btn6)
+        markup.row(btn7, btn8, btn9)
+        markup.row(btn_back)
+        
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 caption=gateways_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
         except:
             pass
-        bot.answer_callback_query(call.id, "Gateways information displayed")
+        bot.answer_callback_query(call.id, "Select a gateway")
+    
+    elif call.data == "gateway_stripe":
+        # Show Stripe gateway information
+        stripe_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Auth</i>
+[⸙] 𝐂𝐌𝐃: /chk [Single]
+[⸙] 𝐂𝐌𝐃: /mchk [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Auth 2</i>
+[⸙] 𝐂𝐌𝐃: /au [Single]
+[⸙] 𝐂𝐌𝐃: /mass [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Auth 3</i>
+[⸙] 𝐂𝐌𝐃: /sr [Single]
+[⸙] 𝐂𝐌𝐃: /msr [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Premium Auth</i>
+[⸙] 𝐂𝐌𝐃: /sp [Single]
+[⸙] 𝐂𝐌𝐃: /msp [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=stripe_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Stripe gateway information")
+    
+    elif call.data == "gateway_braintree":
+        # Show Braintree gateway information
+        braintree_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Braintree Auth</i>
+[⸙] 𝐂𝐌𝐃: /b3 [Single]
+[⸙] 𝐂𝐌𝐃: /mb3 [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Braintree Charge</i>
+[⸙] 𝐂𝐌𝐃: /br [Single]
+[⸙] 𝐂𝐌𝐃: /mbr [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=braintree_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Braintree gateway information")
+    
+    elif call.data == "gateway_3ds":
+        # Show 3DS Lookup gateway information
+        three_ds_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>3DS Lookup</i>
+[⸙] 𝐂𝐌𝐃: /vbv [Single]
+[⸙] 𝐂𝐌𝐃: /mvbv [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=three_ds_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "3DS Lookup gateway information")
+    
+    elif call.data == "gateway_square":
+        # Show Square gateway information
+        square_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Square Charge</i>
+[⸙] 𝐂𝐌𝐃: /qq [Single]
+[⸙] 𝐂𝐌𝐃: /mqq [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=square_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Square gateway information")
+    
+    elif call.data == "gateway_paypal":
+        # Show Paypal gateway information
+        paypal_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Paypal Charge</i>
+[⸙] 𝐂𝐌𝐃: /py [Single]
+[⸙] 𝐂𝐌𝐃: /mpy [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=paypal_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Paypal gateway information")
+    
+    elif call.data == "gateway_site":
+        # Show Site Based gateway information
+        site_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Site Based Charge</i>
+[⸙] 𝐂𝐌𝐃: /cc [Single]
+[⸙] 𝐂𝐌𝐃: /mcc [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=site_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Site Based gateway information")
+    
+    elif call.data == "gateway_authnet":
+        # Show Authnet gateway information
+        authnet_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Authnet Charge</i>
+[⸙] 𝐂𝐌𝐃: /at [Single]
+[⸙] 𝐂𝐌𝐃: /mat [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=authnet_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Authnet gateway information")
+    
+    elif call.data == "gateway_adyen":
+        # Show Adyen gateway information
+        adyen_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Adyen Charge</i>
+[⸙] 𝐂𝐌𝐃: /ad [Single]
+[⸙] 𝐂𝐌𝐃: /mad [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=adyen_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Adyen gateway information")
+    
+    elif call.data == "gateway_shopify":
+        # Show Auto Shopify gateway information
+        shopify_text = f"""
+[⸙] 𝐍𝐀𝐌𝐄: <i>Auto Shopify Charge</i>
+[⸙] 𝐂𝐌𝐃: /sh [Single]
+[⸙] 𝐂𝐌𝐃: /msh [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+"""
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+        
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=shopify_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Auto Shopify gateway information")
     
     elif call.data == "tools":
         # Edit caption to show tools information
@@ -2072,13 +2334,32 @@ def handle_callback(call):
 
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
+        # Create the original main menu buttons
+        markup = telebot.types.InlineKeyboardMarkup()
+        
+        # Row 1
+        btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
+        btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+        
+        # Row 2
+        btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
+        btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+        
+        # Row 3
+        btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+        
+        # Add buttons to markup
+        markup.row(btn1, btn2)
+        markup.row(btn3, btn4)
+        markup.row(btn5)
+        
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 caption=main_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
         except:
             pass
