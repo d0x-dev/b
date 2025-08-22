@@ -403,7 +403,7 @@ def handle_mchk(message):
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
         
         # Send immediate processing message
-        initial_msg = f"🚀 Starting mass check of {len(cards)} cards..."
+        initial_msg = f"<pre>↯ Starting Mass Stripe Auth Check of {len(cards)} Cards...</pre>"
         status_message = bot.reply_to(message, initial_msg)
         
         # Get gateway from first card quickly
@@ -523,7 +523,7 @@ def handle_mass(message):
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
         
         # Send immediate processing message
-        initial_msg = f"🚀 Starting mass AU check of {len(cards)} cards..."
+        initial_msg = f"<pre>↯ Starting Mass Stripe 2 Check of {len(cards)} cards...</pre>"
         status_message = bot.reply_to(message, initial_msg)
         
         # Get gateway from first card quickly
