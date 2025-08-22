@@ -80,8 +80,8 @@ def checking_status_format(cc, gateway, bin_info):
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>Processing</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐫𝐚𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐚𝐧𝐤 ➳ {bin_info.get('type', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐚𝐧𝐤 ➳ {bin_info.get('bank', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a>𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>"""
     
     return result
@@ -105,7 +105,7 @@ def approved_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('type', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('bank', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
@@ -133,7 +133,7 @@ def declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('type', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('bank', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
