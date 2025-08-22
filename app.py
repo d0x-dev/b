@@ -3,6 +3,7 @@ import requests
 import json
 import time
 from telebot.types import Message
+import threading
 from chk import check_card  # Import the check function from chk.py
 from au import process_card_au
 from at import process_card_at
