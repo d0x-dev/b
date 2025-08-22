@@ -305,6 +305,148 @@ def handle_at(message):
     bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
                          text=response_text, parse_mode='HTML')
 
+# Add these constants at the top with other configurations
+MAX_MASS_CHECK = 10
+STATUS_EMOJIS = {
+    'APPROVED': '✅',
+    'DECLINED': '❌',
+    'CCN': '🟡',
+    'ERROR': '⚠️'
+}
+
+# Add this function for mass check formatting
+def format_mass_check(results, total_cards, processing_time, gateway, checked=0):
+    approved = sum(1 for r in results if r['status'] == 'APPROVED')
+    ccn = sum(1 for r in results if r['status'] == 'CCN')
+    declined = sum(1 for r in results if r['status'] == 'DECLINED')
+    errors = sum(1 for r in results if r['status'] == 'ERROR')
+    
+    response = f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>  
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>{processing_time:.2f} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+"""
+    
+    for result in results:
+        emoji = STATUS_EMOJIS.get(result['status'], '❓')
+        response += f"<code>{result['card']}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ {emoji} <i>{result['response']}</i>\n<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>\n"
+    
+    return response
+
+# Add this function for mass check while checking format
+def format_mass_check_processing(total_cards, checked=0, gateway="Stripe Auth"):
+    return f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i> 
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>0</i>  
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>0</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>0</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>0.00 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>Processing cards...</a>"""
+
+# Add this handler for mass check command
+@bot.message_handler(commands=['mchk'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mchk'))
+def handle_mchk(message):
+    # Save user
+    save_user(message.from_user.id)
+    
+    # Extract CC details from message
+    lines = message.text.split('\n')
+    if len(lines) < 2:
+        bot.reply_to(message, "Please provide CC details in format:\n.mchk\nCC|MM|YY|CVV\nCC|MM|YY|CVV\n...")
+        return
+    
+    # Extract cards (skip the first line which is the command)
+    cards = []
+    for line in lines[1:]:
+        line = line.strip()
+        if line and '|' in line:
+            cards.append(line)
+    
+    if not cards:
+        bot.reply_to(message, "No valid card formats found. Use: CC|MM|YY|CVV")
+        return
+    
+    # Limit to MAX_MASS_CHECK cards
+    if len(cards) > MAX_MASS_CHECK:
+        cards = cards[:MAX_MASS_CHECK]
+        bot.reply_to(message, f"⚠️ Limited to first {MAX_MASS_CHECK} cards")
+    
+    total_cards = len(cards)
+    
+    # Get gateway from checking the first card
+    first_card_result = check_card(cards[0])
+    gateway = first_card_result.get("gateway", "Stripe Auth")
+    
+    # Send initial processing message
+    initial_msg = format_mass_check_processing(total_cards, 0, gateway)
+    status_message = bot.reply_to(message, initial_msg, parse_mode='HTML')
+    
+    # Start timer
+    start_time = time.time()
+    
+    # Process cards in a separate thread to avoid blocking
+    def process_cards():
+        try:
+            results = []
+            for i, card in enumerate(cards):
+                try:
+                    result = check_card(card)
+                    results.append({
+                        'card': card,
+                        'status': result['status'],
+                        'response': result['response'],
+                        'gateway': result.get('gateway', 'Stripe Auth')
+                    })
+                    
+                    # Update progress every card
+                    current_time = time.time() - start_time
+                    progress_msg = format_mass_check(results, total_cards, current_time, gateway, i + 1)
+                    try:
+                        bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                            text=progress_msg, parse_mode='HTML')
+                    except:
+                        pass  # Ignore edit errors
+                        
+                except Exception as e:
+                    results.append({
+                        'card': card,
+                        'status': 'ERROR',
+                        'response': f'Error: {str(e)}',
+                        'gateway': gateway
+                    })
+            
+            # Final update
+            final_time = time.time() - start_time
+            final_msg = format_mass_check(results, total_cards, final_time, gateway, total_cards)
+            try:
+                bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                    text=final_msg, parse_mode='HTML')
+            except Exception as e:
+                bot.send_message(message.chat.id, f"Error updating final message: {str(e)}")
+                
+        except Exception as e:
+            error_msg = f"Mass check failed: {str(e)}"
+            try:
+                bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id, 
+                                    text=error_msg, parse_mode='HTML')
+            except:
+                bot.send_message(message.chat.id, error_msg)
+    
+    # Run in background thread
+    thread = threading.Thread(target=process_cards)
+    thread.start()
+
 # Broadcast function for owner/admin
 @bot.message_handler(commands=['broadcast'])
 def handle_broadcast(message):
