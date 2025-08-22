@@ -79,9 +79,9 @@ def checking_status_format(cc, gateway, bin_info):
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>Processing</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐫𝐚𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a>𝐁𝐚𝐧𝐤 ➳ {bin_info.get('bank', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a>𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ➳ {bin_info.get('bank', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {bin_info.get('country', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>"""
     
     return result
@@ -106,7 +106,7 @@ def approved_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('bank', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
@@ -134,7 +134,7 @@ def declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('bank', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country_name', 'UNKNOWN')} {bin_info.get('country_flag', '')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
