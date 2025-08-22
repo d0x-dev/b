@@ -149,7 +149,7 @@ class StripeProcessor:
                 cookies=cookies,
                 headers=headers,
                 data=donation_data,
-                timeout=10
+                timeout=120
             )
             resp_json = donation_response.json()
             
