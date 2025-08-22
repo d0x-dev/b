@@ -12,6 +12,7 @@ from at import process_card_at
 from vbv import check_vbv_card 
 from py import check_paypal_card
 from qq import check_qq_card
+from cc import process_card_cc
 #====================================================================#
 
 # Bot token 
@@ -1287,7 +1288,7 @@ def handle_mqq(message):
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
 # Add this import at the top
-from cc import check_cc_card
+from cc import process_cc_card
 
 # Add CC command handler
 @bot.message_handler(commands=['cc'])
@@ -1323,7 +1324,7 @@ def handle_cc(message):
     start_time = time.time()
     
     # Check Site Based status
-    check_result = check_cc_card(cc)
+    check_result = process_cc_card(cc)
     
     # Calculate time taken
     end_time = time.time()
@@ -1411,7 +1412,7 @@ def handle_mcc(message):
                 # Process cards sequentially
                 for i, card in enumerate(cards, 1):
                     try:
-                        result = check_cc_card(card)
+                        result = process_cc_card(card)
                         results.append({
                             'card': card,
                             'status': result['status'],
