@@ -307,12 +307,16 @@ def handle_at(message):
                          text=response_text, parse_mode='HTML')
 
 # Add these constants at the top with other configurations
+# Update these constants at the top with other configurations
 MAX_MASS_CHECK = 10
 STATUS_EMOJIS = {
     'APPROVED': '✅',
+    'Approved': '✅',
     'DECLINED': '❌',
+    'Declined': '❌',
     'CCN': '🟡',
-    'ERROR': '⚠️'
+    'ERROR': '⚠️',
+    'Error': '⚠️'
 }
 
 # Add this function for mass check formatting
