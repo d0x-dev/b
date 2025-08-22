@@ -1875,7 +1875,7 @@ def handle_start(message):
     markup.row(btn3, btn4)
     markup.row(btn5)
     
-    # Send video with caption and buttons
+    # Try to send video first, if it fails send text message
     try:
         msg = bot.send_video(
             message.chat.id,
@@ -1885,15 +1885,21 @@ def handle_start(message):
             reply_markup=markup
         )
         # Store message ID for later editing
+        if not hasattr(bot, 'user_data'):
+            bot.user_data = {}
         bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
+        
     except Exception as e:
-        # Fallback to text message if video fails
+        print(f"Video send failed: {e}")
+        # If video fails, send text message instead (only one message)
         msg = bot.send_message(
             message.chat.id,
-            caption + "\n\n🎥 Video preview unavailable",
+            caption,
             parse_mode='HTML',
             reply_markup=markup
         )
+        if not hasattr(bot, 'user_data'):
+            bot.user_data = {}
         bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
 
 # Add callback handler for the buttons
