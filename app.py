@@ -1,4 +1,4 @@
-2import telebot
+import telebot
 import requests
 import json
 import time
