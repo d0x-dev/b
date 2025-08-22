@@ -12,7 +12,7 @@ from at import process_card_at
 from vbv import check_vbv_card 
 from py import check_paypal_card
 from qq import check_qq_card
-from cc import process_card_cc
+from cc import process_cc_card
 #====================================================================#
 
 # Bot token 
