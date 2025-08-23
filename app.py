@@ -2118,123 +2118,146 @@ def handle_bin(message):
         parse_mode='HTML'
     )
 
+
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    # --- hard guard: don't process this update twice for the same chat ---
-    if not hasattr(bot, "user_data"):
-        bot.user_data = {}
-    last = bot.user_data.get(message.chat.id, {})
-    if last.get("last_update_id") == message.message_id:
-        return  # already handled
-    bot.user_data[message.chat.id] = {"last_update_id": message.message_id}
+    save_user(message.from_user.id)
 
-    save_users(message.from_user.id)
-
+    # Get user information
     user = message.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
-    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message.date))
-    credits = "0"
+    join_date = message.date  # This is a timestamp, convert to readable format
+    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
 
-    caption = f"""
-↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
+    # Credits (you can implement your own credit system)
+    credits = "0"  # Default credits
 
-<a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
+    # Create the caption with formatting
+    caption = f"""↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x<a href='https://t.me/stormxvup'>[⸙]</a>
+ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}<a href='https://t.me/stormxvup'>[⸙]</a>
+ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}<a href='https://t.me/stormxvup'>[⸙]</a>
+ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code><a href='https://t.me/stormxvup'>[⸙]</a>
+ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i><a href='https://t.me/stormxvup'>[⸙]</a>
+ᴄʀᴇᴅɪᴛs ⌁ {credits}
+↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
 
-↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
-"""
-
-    # keyboard
+    # Create inline keyboard buttons - 2 buttons per line
     markup = telebot.types.InlineKeyboardMarkup()
+
+    # Row 1
     btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
     btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+
+    # Row 2
     btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
     btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+
+    # Row 3
     btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+
+    # Add buttons to markup
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
     markup.row(btn5)
 
-    # --- send exactly one message ---
+    # First try to send the video
     try:
-        # First try to send as video
         msg = bot.send_video(
             chat_id=message.chat.id,
-            video="https://t.me/video336/2",  # Use 'video' parameter, not 'data'
+            video="https://t.me/video336/2",
             caption=caption,
-            parse_mode="HTML",
-            reply_markup=markup
+            parse_mode='HTML',
+            reply_markup=markup,
+            timeout=10  # Add timeout to prevent hanging
         )
+        print("Video sent successfully")
+
     except Exception as e:
-        print(f"Video send failed: {e}")
+        print(f"Video failed: {e}")
+        # If video fails, try sending as document
         try:
-            # Fallback: send as document
             msg = bot.send_document(
                 chat_id=message.chat.id,
                 document="https://t.me/video336/2",
                 caption=caption,
-                parse_mode="HTML",
-                reply_markup=markup
+                parse_mode='HTML',
+                reply_markup=markup,
+                timeout=10
             )
-        except Exception as e:
-            print(f"Document send failed: {e}")
+            print("Sent as document")
+
+        except Exception as e2:
+            print(f"Document also failed: {e2}")
+            # If both fail, send text message with thumbnail
             try:
-                # Fallback: send as photo with different image
+                # Try to send with a photo first
                 msg = bot.send_photo(
                     chat_id=message.chat.id,
                     photo="https://img.icons8.com/fluency/96/000000/telegram-app.png",
                     caption=caption,
-                    parse_mode="HTML",
-                    reply_markup=markup
+                    parse_mode='HTML',
+                    reply_markup=markup,
+                    timeout=10
                 )
-            except Exception as e:
-                print(f"Photo send failed: {e}")
-                # Final fallback: send as text only
+                print("Sent with photo")
+
+            except Exception as e3:
+                print(f"Photo failed: {e3}")
+                # Final fallback: plain text message
                 msg = bot.send_message(
                     chat_id=message.chat.id,
-                    text=caption + "\n\n🎥 Video preview unavailable",
-                    parse_mode="HTML",
+                    text=caption,
+                    parse_mode='HTML',
                     reply_markup=markup,
                     disable_web_page_preview=True
                 )
+                print("Sent plain text message")
 
-    # store welcome message id (optional)
-    bot.user_data[message.chat.id]["welcome_msg_id"] = msg.message_id
+    # Store message ID for callback handling
+    if not hasattr(bot, 'user_data'):
+        bot.user_data = {}
+    bot.user_data[message.chat.id] = {"welcome_msg_id": msg.message_id}
 
-# Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     user = call.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
     credits = "0"  # Default credits
-    
+
     if call.data == "gateways":
-        # Create markup with back button
+        # Show gateway selection menu
+        gateways_text = f"""🔍 <b>Select Gateway Below:</b>
+Choose a payment gateway to check your cards"""
+
+        # Create gateway selection buttons (2 buttons per row)
         markup = telebot.types.InlineKeyboardMarkup()
+
+        # Rows with 2 buttons each
+        btn1 = telebot.types.InlineKeyboardButton("Stripe", callback_data="gateway_stripe")
+        btn2 = telebot.types.InlineKeyboardButton("Braintree", callback_data="gateway_braintree")
+        markup.row(btn1, btn2)
+
+        btn3 = telebot.types.InlineKeyboardButton("3DS Lookup", callback_data="gateway_3ds")
+        btn4 = telebot.types.InlineKeyboardButton("Square", callback_data="gateway_square")
+        markup.row(btn3, btn4)
+
+        btn5 = telebot.types.InlineKeyboardButton("Paypal", callback_data="gateway_paypal")
+        btn6 = telebot.types.InlineKeyboardButton("Site Based", callback_data="gateway_site")
+        markup.row(btn5, btn6)
+
+        btn7 = telebot.types.InlineKeyboardButton("Authnet", callback_data="gateway_authnet")
+        btn8 = telebot.types.InlineKeyboardButton("Adyen", callback_data="gateway_adyen")
+        markup.row(btn7, btn8)
+
+        btn9 = telebot.types.InlineKeyboardButton("Auto Shopify", callback_data="gateway_shopify")
+        markup.row(btn9)
+
+        # Back button
         btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
         markup.row(btn_back)
-        
-        gateways_text = f"""
-🔍 <b>Gateways Available:</b>
 
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.chk</code> - Stripe Auth 2th
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.vbv</code> - 3DS Lookup
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.py</code> - Paypal [0.1$]
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.qq</code> - Stripe Square [0.20$]
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.cc</code> - Site Based [1$]
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.sh</code> - Self Shopify [Custom]
-
-📊 <b>Mass Check Commands:</b>
-<code>.mchk</code> <code>.mvbv</code> <code>.mpy</code> 
-<code>.mqq</code> <code>.mcc</code> <code>.msh</code>
-
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
-"""
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
@@ -2243,136 +2266,350 @@ def handle_callback(call):
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except Exception as e:
-            print(f"Error editing gateways: {e}")
-        bot.answer_callback_query(call.id, "Gateways information displayed")
-    
-    elif call.data == "tools":
-        # Create markup with back button
-        markup = telebot.types.InlineKeyboardMarkup()
-        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
-        markup.row(btn_back)
-        
-        tools_text = f"""
-🛠️ <b>Available Tools:</b>
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Select a gateway")
 
+    elif call.data == "gateway_stripe":
+        # Show Stripe gateway information
+        stripe_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Auth</i>
+[⸙] 𝐂𝐌𝐃: /chk [Single]
+[⸙] 𝐂𝐌𝐃: /mchk [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Auth 2</i>
+[⸙] 𝐂𝐌𝐃: /au [Single]
+[⸙] 𝐂𝐌𝐃: /mass [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Auth 3</i>
+[⸙] 𝐂𝐌𝐃: /sr [Single]
+[⸙] 𝐂𝐌𝐃: /msr [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Stripe Premium Auth</i>
+[⸙] 𝐂𝐌𝐃: /sp [Single]
+[⸙] 𝐂𝐌𝐃: /msp [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=stripe_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Stripe gateway information")
+
+    elif call.data == "gateway_braintree":
+        # Show Braintree gateway information
+        braintree_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Braintree Auth</i>
+[⸙] 𝐂𝐌𝐃: /b3 [Single]
+[⸙] 𝐂𝐌𝐃: /mb3 [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
+──────── ⸙ ─────────
+[⸙] 𝐍𝐀𝐌𝐄: <i>Braintree Charge</i>
+[⸙] 𝐂𝐌𝐃: /br [Single]
+[⸙] 𝐂𝐌𝐃: /mbr [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=braintree_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Braintree gateway information")
+
+    elif call.data == "gateway_3ds":
+        # Show 3DS Lookup gateway information
+        three_ds_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>3DS Lookup</i>
+[⸙] 𝐂𝐌𝐃: /vbv [Single]
+[⸙] 𝐂𝐌𝐃: /mvbv [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=three_ds_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "3DS Lookup gateway information")
+
+    elif call.data == "gateway_square":
+        # Show Square gateway information
+        square_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Square Charge</i>
+[⸙] 𝐂𝐌𝐃: /qq [Single]
+[⸙] 𝐂𝐌𝐃: /mqq [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=square_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Square gateway information")
+
+    elif call.data == "gateway_paypal":
+        # Show Paypal gateway information
+        paypal_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Paypal Charge</i>
+[⸙] 𝐂𝐌𝐃: /py [Single]
+[⸙] 𝐂𝐌𝐃: /mpy [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=paypal_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Paypal gateway information")
+
+    elif call.data == "gateway_site":
+        # Show Site Based gateway information
+        site_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Site Based Charge</i>
+[⸙] 𝐂𝐌𝐃: /cc [Single]
+[⸙] 𝐂𝐌𝐃: /mcc [Mass]
+[⸙] 𝐒𝐭𝐨𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=site_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Site Based gateway information")
+
+    elif call.data == "gateway_authnet":
+        # Show Authnet gateway information
+        authnet_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Authnet Charge</i>
+[⸙] 𝐂𝐌𝐃: /at [Single]
+[⸙] 𝐂𝐌𝐃: /mat [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=authnet_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Authnet gateway information")
+
+    elif call.data == "gateway_adyen":
+        # Show Adyen gateway information
+        adyen_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Adyen Charge</i>
+[⸙] 𝐂𝐌𝐃: /ad [Single]
+[⸙] 𝐂𝐌𝐃: /mad [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=adyen_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Adyen gateway information")
+
+    elif call.data == "gateway_shopify":
+        # Show Auto Shopify gateway information
+        shopify_text = f"""[⸙] 𝐍𝐀𝐌𝐄: <i>Auto Shopify Charge</i>
+[⸙] 𝐂𝐌𝐃: /sh [Single]
+[⸙] 𝐂𝐌𝐃: /msh [Mass]
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅"""
+
+        # Create back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="gateways")
+        markup.row(btn_back)
+
+        try:
+            bot.edit_message_caption(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                caption=shopify_text,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except:
+            pass
+        bot.answer_callback_query(call.id, "Auto Shopify gateway information")
+
+    elif call.data == "tools":
+        # Edit caption to show tools information
+        tools_text = f"""🛠️ <b>Available Tools:</b>
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.gate</code> URL - Gate Checker
 • Check payment gateways, captcha, and security
-
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.bin</code> BIN - BIN Lookup  
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.bin</code> BIN - BIN Lookup
 • Get detailed BIN information
-
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.au</code> - Stripe Auth 2
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.at</code> - Authnet [5$]
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ"""
 
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
-"""
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 caption=tools_text,
                 parse_mode='HTML',
-                reply_markup=markup
+                reply_markup=call.message.reply_markup
             )
-        except Exception as e:
-            print(f"Error editing tools: {e}")
+        except:
+            pass
         bot.answer_callback_query(call.id, "Tools information displayed")
-    
-    elif call.data == "help":
-        # Create markup with back button
-        markup = telebot.types.InlineKeyboardMarkup()
-        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
-        markup.row(btn_back)
-        
-        help_text = f"""
-❓ <b>Help & Support</b>
 
+    elif call.data == "help":
+        # Edit caption to show help information
+        help_text = f"""❓ <b>Help & Support</b>
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>How to use:</b>
 • Use commands like <code>.chk CC|MM|YY|CVV</code>
 • For mass check, reply to message with cards using <code>.mchk</code>
-• Set Shopify site with <code>/seturl your-store.com</code>
-
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>Support:</b>
 • Channel: @stormxvup
 • Contact for help and credits
-
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>Note:</b>
 • Always use valid card formats
 • Results may vary by gateway
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ"""
 
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
-"""
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 caption=help_text,
                 parse_mode='HTML',
-                reply_markup=markup
+                reply_markup=call.message.reply_markup
             )
-        except Exception as e:
-            print(f"Error editing help: {e}")
+        except:
+            pass
         bot.answer_callback_query(call.id, "Help information displayed")
-    
-    elif call.data == "myinfo":
-        # Create markup with back button
-        markup = telebot.types.InlineKeyboardMarkup()
-        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
-        markup.row(btn_back)
-        
-        myinfo_text = f"""
-👤 <b>Your Information:</b>
 
+    elif call.data == "myinfo":
+        # Edit caption to show user info
+        myinfo_text = f"""👤 <b>Your Information:</b>
 <a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀ ɪᴅ ⌁ <code>{user.id}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
-
 📊 <b>Usage Statistics:</b>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴛᴏᴛᴀʟ ᴄʜᴇᴄᴋs ⌁ 0
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴛ ⌁ 0
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴅ ⌁ 0
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ 0
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴜ ɴᴀᴠɪɢᴀᴛᴇ"""
 
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
-"""
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 caption=myinfo_text,
                 parse_mode='HTML',
-                reply_markup=markup
+                reply_markup=call.message.reply_markup
             )
-        except Exception as e:
-            print(f"Error editing myinfo: {e}")
+        except:
+            pass
         bot.answer_callback_query(call.id, "Your information displayed")
-    
+
     elif call.data == "back_to_main":
-        # Return to main welcome screen with original buttons
+        # Return to main welcome screen
         join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(call.message.date))
-        main_text = f"""
-↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
+        main_text = f"""↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x<a href='https://t.me/stormxvup'>[⸙]</a>
+ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}<a href='https://t.me/stormxvup'>[⸙]</a>
+ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}<a href='https://t.me/stormxvup'>[⸙]</a>
+ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code><a href='https://t.me/stormxvup'>[⸙]</a>
+ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i><a href='https://t.me/stormxvup'>[⸙]</a>
+ᴄʀᴇᴅɪᴛs ⌁ {credits}
+↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
 
-<a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
-
-↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
-"""
-        # Recreate original buttons
+        # Create the original main menu buttons
         markup = telebot.types.InlineKeyboardMarkup()
+
+        # Row 1
         btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
         btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+
+        # Row 2
         btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
         btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+
+        # Row 3
         btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+
+        # Add buttons to markup
         markup.row(btn1, btn2)
         markup.row(btn3, btn4)
         markup.row(btn5)
-        
+
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
@@ -2381,9 +2618,10 @@ def handle_callback(call):
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except Exception as e:
-            print(f"Error editing back to main: {e}")
+        except:
+            pass
         bot.answer_callback_query(call.id, "Returned to main menu")
+
 
 # Run the bot
 if __name__ == "__main__":
