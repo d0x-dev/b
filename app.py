@@ -2154,16 +2154,22 @@ def handle_start(message):
 
     # Try to send the video first
     try:
-        msg = bot.send_video(
-            chat_id=message.chat.id,
-            video="https://t.me/video336/2",
+        msg = bot.copy_message(
+            from_chat_id='@video336',  # from https://t.me/video336/2
+            message_id=2,              # the "2" in the link
             caption=caption,
             parse_mode='HTML',
             reply_markup=markup
-        )
+    )
+        
     except Exception as e:
-        print(f"Video failed: {e}")
-        # Fallback options...
+        print(f"copy_message failed: {e}")
+        msg = bot.send_message(
+        chat_id=message.chat.id,
+        text=caption + "\n\n🎥 Video preview unavailable",
+        parse_mode='HTML',
+        reply_markup=markup
+    )
 
 # Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
