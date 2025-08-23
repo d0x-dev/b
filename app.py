@@ -2118,7 +2118,6 @@ def handle_bin(message):
         parse_mode='HTML'
     )
 
-# Handle /start command
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     user_id = message.from_user.id
@@ -2145,54 +2144,26 @@ def handle_start(message):
     markup = InlineKeyboardMarkup()
     btn1 = InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
     btn2 = InlineKeyboardButton("🛠️ Tools", callback_data="tools")
-    btn3 = InlineKeyboardButton("❓ Help", callback_data="help")
-    btn4 = InlineKeyboardButton("👤 My Info", callback_data="myinfo")
-    btn5 = InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
-    markup.row(btn1, btn2)
-    markup.row(btn3, btn4)
-    markup.row(btn5)
+    btn3 = InlineKeyboardButton("🛒 Shopify", callback_data="shopify_info")
+    markup.row(btn1, btn2, btn3)
+    btn4 = InlineKeyboardButton("❓ Help", callback_data="help")
+    btn5 = InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+    markup.row(btn4, btn5)
+    btn6 = InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+    markup.row(btn6)
 
     # Try to send the video first
     try:
         msg = bot.send_video(
             chat_id=message.chat.id,
-            video="https://t.me/video336/2",  # Your original video URL
+            video="https://t.me/video336/2",
             caption=caption,
             parse_mode='HTML',
             reply_markup=markup
         )
     except Exception as e:
         print(f"Video failed: {e}")
-        # Fallback: Send as document
-        try:
-            msg = bot.send_document(
-                chat_id=message.chat.id,
-                document="https://t.me/video336/2",
-                caption=caption,
-                parse_mode='HTML',
-                reply_markup=markup
-            )
-        except Exception as e:
-            print(f"Document failed: {e}")
-            # Final fallback: Send as photo
-            try:
-                msg = bot.send_photo(
-                    chat_id=message.chat.id,
-                    photo="https://img.icons8.com/fluency/96/000000/telegram-app.png",  # Fallback image
-                    caption=caption,
-                    parse_mode='HTML',
-                    reply_markup=markup
-                )
-            except Exception as e:
-                print(f"Photo failed: {e}")
-                # If all else fails, send plain text
-                msg = bot.send_message(
-                    chat_id=message.chat.id,
-                    text=caption,
-                    parse_mode='HTML',
-                    reply_markup=markup,
-                    disable_web_page_preview=True
-                )
+        # Fallback options...
 
 # Handle /broadcast command
 @bot.message_handler(commands=['broadcast'])
