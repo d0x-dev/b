@@ -1516,9 +1516,9 @@ def handle_seturl(message):
 ┃ 𝗦𝗶𝘁𝗲 𝗔𝗱𝗱𝗲𝗱 ✅
 ┗━━━━━━━━━━━⊛
                             
-❖ 𝗦𝗶𝘁𝗲 ➳ <code>{url}</code>
-❖ 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ➳ {api_message}
-❖ 𝗔𝗺𝗼𝘂𝗻𝘁 ➳ ${price}
+<a href='https://t.me/stormxvup'>[⸙]</a>❖ 𝗦𝗶𝘁𝗲 ➳ <code>{url}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a>❖ 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ➳ {api_message}
+<a href='https://t.me/stormxvup'>[⸙]</a>❖ 𝗔𝗺𝗼𝘂𝗻𝘁 ➳ ${price}
 
 <i>You can now check cards with /sh command</i>
 ─────── ⸙ ────────
@@ -1692,47 +1692,38 @@ def format_shopify_response(result, user_full_name, processing_time):
         user_status = "Free"
 
     response = f"""
-┏━━━━━━━⍟
-┃ {status_text[result['status']]} {status_emoji[result['status']]}
-┗━━━━━━━━━━━⊛
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ {status_text[result['status']]} {status_emoji[result['status']]}</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
-⌯ 𝗖𝗮𝗿𝗱
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱
    ↳ <code>{result['card']}</code>
-⌯ 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➳ <i>{result['gateway']}</i>  
-⌯ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➳ <i>{result['message']}</i>
-
-⌯ 𝗜𝗻𝗳𝗼 ➳ {result['brand']}
-⌯ 𝐈𝐬𝐬𝐮𝐞𝐫 ➳ {result['type']}
-⌯ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {result['country']}
-
-⌯ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➳ {user_full_name}[{user_status}]
-⌯ 𝐃𝐞𝐯 ⌁ <a href='tg://user?id=6521162324'>⎯꯭𖣐᪵‌𐎓⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲◄⏤‌‌ꭙ‌‌⁷ ꯭</a>
-⌯ 𝗧𝗶𝗺𝗲 ➳ {processing_time:.2f} 𝐬𝐞𝐜𝐨𝐧𝐝
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{result['gateway']}</i>  
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{result['message']}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {result['brand']}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {result['type']}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {result['country']}
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {user_full_name}[{user_status}]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ <a href='tg://user?id=6521162324'>⎯꯭𖣐᪵‌𐎓⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲◄⏤‌‌ꭙ‌‌⁷ ꯭</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁  {processing_time:.2f} 𝐬𝐞𝐜𝐨𝐧𝐝
 """
     return response
 
 @bot.message_handler(commands=['sh'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sh'))
 def handle_sh(message):
-    user_id = message.from_user.id
-    init_user(user_id, message.from_user.username)
-    if not use_credits(user_id):
-        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
-        return
-
-    command_parts = message.text.split()
-    if len(command_parts) < 2:
-        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV")
-        return
-
-    cc = command_parts[1]
-    if '|' not in cc:
-        bot.reply_to(message, "Invalid format. Use: CC|MM|YY|CVV")
-        return
-    # Check if user has set a URL
     user_id = str(message.from_user.id)
+    
+    # Check if user has set a URL first
     if user_id not in USER_SITES:
         bot.reply_to(message, "❌ You haven't added any site yet. Add a site with /seturl <your_shopify_url>\nUse /myurl to view your site details")
+        return
+    
+    # Check credits
+    if not use_credits(int(user_id)):
+        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
         return
 
     try:
@@ -1778,10 +1769,31 @@ def handle_sh(message):
         user_full_name = message.from_user.first_name
         if message.from_user.last_name:
             user_full_name += " " + message.from_user.last_name
+            
+        # Get bin info for the checking status message
+        bin_number = cc.split('|')[0][:6]
+        bin_info = get_bin_info(bin_number) or {}
+        brand = bin_info.get('brand', 'UNKNOWN')
+        card_type = bin_info.get('type', 'UNKNOWN')
+        country = bin_info.get('country', 'UNKNOWN')
+        country_flag = bin_info.get('country_flag', '🇺🇳')
 
         status_msg = bot.reply_to(
             message,
-            f"↯ Checking..\n\n⌯ 𝐂𝐚𝐫𝐝 - <code>{cc}</code>\n⌯ 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 -  <i>Self Shopify [${USER_SITES[user_id].get('price', '1.0')}]</i> \n⌯ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 - <i>Processing</i>",
+            f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ ↯ 𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗖𝗮𝗿𝗱 ⌁ <code>{cc}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>Self Shopify [${USER_SITES[user_id].get('price', '1.0')}]</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>Processing</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {brand}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐲𝐩𝐞 ⌁ {card_type}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {country} {country_flag}
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+            """,
             parse_mode='HTML'
         )
 
@@ -1810,7 +1822,6 @@ def handle_sh(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {str(e)}")
-
 
 # Handle /gate command
 def check_gate_url(url):
