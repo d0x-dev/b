@@ -1688,7 +1688,7 @@ def handle_bin(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    save_user(message.from_user.id)
+    save_users(message.from_user.id)
     
     # Get user information
     user = message.from_user
