@@ -21,11 +21,11 @@ from cc import process_cc_card
 #====================================================================#
 
 # Bot token
-BOT_TOKEN = "8320534432:AAFPzKpzxWMAPS7aBBYmW-MuOPnOYvxPDOc"
+BOT_TOKEN = "8398297374:AAE-bhGRfTu5CHsF6dgrR3rzglWQ2N4KmaI"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # Configuration
-OWNER_ID = 123456789  # Replace with your Telegram ID
+OWNER_ID = 8026335089  # Replace with your Telegram ID
 ADMIN_IDS = [987654321, 112233445]  # Replace with admin Telegram IDs
 USER_DATA_FILE = "users.json"
 GROUP_DATA_FILE = "groups.json"
