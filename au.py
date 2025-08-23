@@ -13,7 +13,7 @@ def process_card_au(ccx):
             "cc": ccx,
             "response": "Invalid card format. Use: NUMBER|MM|YY|CVV",
             "status": "Declined",
-            "gateway": "Stripe AU"
+            "gateway": "Stripe Auth 2"
         }
     
     if "20" in yy:
@@ -76,11 +76,11 @@ def process_card_au(ccx):
 
         if 'id' not in pm_data:
             error_msg = pm_data.get('error', {}).get('message', 'Unknown payment method error')
-            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe AU"}
+            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
 
         payment_method_id = pm_data['id']
     except Exception as e:
-        return {"cc": ccx, "response": f"Payment Method Creation Failed: {str(e)}", "status": "Declined", "gateway": "Stripe AU"}
+        return {"cc": ccx, "response": f"Payment Method Creation Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2"}
 
     # Step 2: Get nonce from the website
     cookies = {
@@ -106,9 +106,9 @@ def process_card_au(ccx):
         if 'createAndConfirmSetupIntentNonce' in nonce_response.text:
             nonce = nonce_response.text.split('createAndConfirmSetupIntentNonce":"')[1].split('"')[0]
         else:
-            return {"cc": ccx, "response": "Failed to extract nonce", "status": "Declined", "gateway": "Stripe AU"}
+            return {"cc": ccx, "response": "Failed to extract nonce", "status": "Declined", "gateway": "Stripe Auth 2"}
     except Exception as e:
-        return {"cc": ccx, "response": f"Nonce Retrieval Failed: {str(e)}", "status": "Declined", "gateway": "Stripe AU"}
+        return {"cc": ccx, "response": f"Nonce Retrieval Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2"}
 
     # Step 3: Create and confirm setup intent
     params = {'wc-ajax': 'wc_stripe_create_and_confirm_setup_intent'}
@@ -143,18 +143,18 @@ def process_card_au(ccx):
         if setup_data.get('success', False):
             data_status = setup_data['data'].get('status')
             if data_status == 'requires_action':
-                return {"cc": ccx, "response": "Action Required", "status": "Approved", "gateway": "Stripe Auth 2"}
+                return {"cc": ccx, "response": "Action Required", "status": "Approved", "gateway": "Stripe Auth 2th 2"}
             elif data_status == 'succeeded':
-                return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth 2"}
+                return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth 2th 2"}
             elif 'error' in setup_data['data']:
                 error_msg = setup_data['data']['error'].get('message', 'Unknown error')
-                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2th 2"}
 
         if not setup_data.get('success') and 'data' in setup_data and 'error' in setup_data['data']:
             error_msg = setup_data['data']['error'].get('message', 'Unknown error')
-            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2th 2"}
 
-        return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth 2"}
+        return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth 2th 2"}
 
     except Exception as e:
-        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2"}
+        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2th 2"}
