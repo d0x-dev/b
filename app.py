@@ -2120,22 +2120,14 @@ def handle_bin(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    # --- hard guard: don't process this update twice for the same chat ---
-    if not hasattr(bot, "user_data"):
-        bot.user_data = {}
-    last = bot.user_data.get(message.chat.id, {})
-    if last.get("last_update_id") == message.message_id:
-        return  # already handled
-    bot.user_data[message.chat.id] = {"last_update_id": message.message_id}
-
-    save_users(message.from_user.id)
-
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
     user = message.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
-    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message.date))
-    credits = "0"
-
+    join_date = message.date
+    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
+    credits = get_user_credits(user_id)
     caption = f"""
 ↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
 
@@ -2148,37 +2140,30 @@ def handle_start(message):
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
 
-    # keyboard
-    markup = telebot.types.InlineKeyboardMarkup()
-    btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
-    btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
-    btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
-    btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
-    btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
-    markup.row(btn1, btn2)
-    markup.row(btn3, btn4)
-    markup.row(btn5)
+    # Create inline keyboard buttons
+    markup = InlineKeyboardMarkup()
+    btn1 = InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
+    btn2 = InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+    btn3 = InlineKeyboardButton("🛒 Shopify", callback_data="shopify_info")
+    markup.row(btn1, btn2, btn3)
+    btn4 = InlineKeyboardButton("❓ Help", callback_data="help")
+    btn5 = InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+    markup.row(btn4, btn5)
+    btn6 = InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+    markup.row(btn6)
 
-    # --- send exactly one message ---
+    # Try to send the video first
     try:
         msg = bot.send_video(
             chat_id=message.chat.id,
-            data="https://t.me/video336/2",
+            video="https://t.me/video336/2",
             caption=caption,
-            parse_mode="HTML",
+            parse_mode='HTML',
             reply_markup=markup
         )
-    except Exception:
-        msg = bot.send_message(
-            chat_id=message.chat.id,
-            text=caption + "\n\n🎥 Video preview unavailable",
-            parse_mode="HTML",
-            reply_markup=markup
-        )
-
-    # store welcome message id (optional)
-    bot.user_data[message.chat.id]["welcome_msg_id"] = msg.message_id
-
+    except Exception as e:
+        print(f"Video failed: {e}")
+        # Fallback options...
 
 # Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
