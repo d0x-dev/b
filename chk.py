@@ -173,10 +173,7 @@ def check_card(ccx):
         stripe_response = response.json()
 
         if 'error' in stripe_response:
-            error_code = stripe_response['error']['code']
             error_message = stripe_response['error']['message']
-            if error_code == 'card_declined':
-                return {"cc": ccx, "response": "Card was declined", "status": "Declined", "gateway": "Stripe AU"}
             return {"cc": ccx, "response": error_message, "status": "Declined", "gateway": "Stripe AU"}
 
         id = stripe_response.get('id', '')
@@ -219,6 +216,7 @@ def check_card(ccx):
         except json.JSONDecodeError:
             return {"cc": ccx, "response": "Invalid JSON response from server", "status": "Declined", "gateway": "Stripe AU"}
 
+        # Extract the response message correctly
         if setup_data.get('success', False):
             data_status = setup_data['data'].get('status')
             if data_status == 'requires_action':
@@ -233,7 +231,12 @@ def check_card(ccx):
             error_msg = setup_data['data']['error'].get('message', 'Unknown error')
             return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
 
-        return {"cc": ccx, "response": str(setup_data), "status": "Declined", "gateway": "Stripe Auth 2"}
+        # Handle the case where we get a status: error response
+        if setup_data.get('status') == 'error' and 'error' in setup_data:
+            error_msg = setup_data['error'].get('message', 'Unknown error')
+            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+
+        return {"cc": ccx, "response": "Unknown response from server", "status": "Declined", "gateway": "Stripe Auth 2"}
 
     except Exception as e:
         return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2"}
