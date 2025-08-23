@@ -221,7 +221,7 @@ def check_card(ccx):
             print(f"DEBUG - Parsed JSON response: {setup_data}")
         except json.JSONDecodeError as e:
             print(f"DEBUG - JSON decode error: {e}")
-            return {"cc": ccx, "response": f"Invalid JSON response: {response.text}", "status": "Declined", "gateway": "Stripe AU"}
+            return {"cc": ccx, "response": f"Invalid JSON response: {response.text}", "status": "Declined", "gateway": "Stripe Auth"}
 
         # Extract the response message correctly
         if setup_data.get('success', False):
@@ -229,41 +229,41 @@ def check_card(ccx):
             if 'data' in setup_data and setup_data['data']:
                 data_status = setup_data['data'].get('status')
                 if data_status == 'requires_action':
-                    return {"cc": ccx, "response": "Action Required", "status": "Approved", "gateway": "Stripe Auth 2"}
+                    return {"cc": ccx, "response": "Action Required", "status": "Approved", "gateway": "Stripe Auth "}
                 elif data_status == 'succeeded':
-                    return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth 2"}
+                    return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth "}
                 elif 'error' in setup_data['data']:
                     error_msg = setup_data['data']['error'].get('message', 'Unknown error')
-                    return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+                    return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth "}
             else:
                 # If success is True but no data, check if there's a direct status
                 if setup_data.get('status') == 'succeeded':
-                    return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth 2"}
+                    return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth "}
                 else:
-                    return {"cc": ccx, "response": "Success but no data returned", "status": "Approved", "gateway": "Stripe Auth 2"}
+                    return {"cc": ccx, "response": "Success but no data returned", "status": "Approved", "gateway": "Stripe Auth "}
 
         # Handle error cases
         if not setup_data.get('success'):
             if 'data' in setup_data and setup_data['data'] and 'error' in setup_data['data']:
                 error_msg = setup_data['data']['error'].get('message', 'Unknown error')
-                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth "}
             elif 'error' in setup_data:
                 error_msg = setup_data['error'].get('message', 'Unknown error')
-                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+                return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth "}
 
         # Handle the case where we get a status: error response
         if setup_data.get('status') == 'error' and 'error' in setup_data:
             error_msg = setup_data['error'].get('message', 'Unknown error')
-            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth 2"}
+            return {"cc": ccx, "response": error_msg, "status": "Declined", "gateway": "Stripe Auth "}
 
         # If we get just {'status': 'success'} without data, it might be approved
         if setup_data.get('status') == 'success':
-            return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth 2"}
+            return {"cc": ccx, "response": "Succeeded", "status": "Approved", "gateway": "Stripe Auth "}
 
         # Return the actual full response for debugging
-        return {"cc": ccx, "response": f"Full response: {response.text}", "status": "Declined", "gateway": "Stripe Auth 2"}
+        return {"cc": ccx, "response": f"Full response: {response.text}", "status": "Declined", "gateway": "Stripe Auth "}
 
     except Exception as e:
         import traceback
         print(f"DEBUG - Exception: {traceback.format_exc()}")
-        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth 2"}
+        return {"cc": ccx, "response": f"Setup Intent Failed: {str(e)}", "status": "Declined", "gateway": "Stripe Auth "}
