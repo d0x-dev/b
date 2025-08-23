@@ -2236,6 +2236,7 @@ def handle_group_message(message):
         save_groups(groups)
 
 # Callback handler for buttons
+# Callback handler for buttons
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     user = call.from_user
@@ -2261,10 +2262,9 @@ Choose a payment gateway to check your cards
         btn7 = InlineKeyboardButton("Authnet", callback_data="gateway_authnet")
         btn8 = InlineKeyboardButton("Adyen", callback_data="gateway_adyen")
         markup.row(btn7, btn8)
-        btn9 = InlineKeyboardButton("Auto Shopify", callback_data="gateway_shopify")
-        markup.row(btn9)
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2273,8 +2273,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Select a gateway")
 
     elif call.data == "gateway_stripe":
@@ -2302,6 +2303,7 @@ Choose a payment gateway to check your cards
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2310,8 +2312,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Stripe gateway information")
 
     elif call.data == "gateway_3ds":
@@ -2324,6 +2327,7 @@ Choose a payment gateway to check your cards
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2332,8 +2336,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "3DS Lookup gateway information")
 
     elif call.data == "gateway_square":
@@ -2346,6 +2351,7 @@ Choose a payment gateway to check your cards
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2354,8 +2360,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Square gateway information")
 
     elif call.data == "gateway_paypal":
@@ -2368,6 +2375,7 @@ Choose a payment gateway to check your cards
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2376,8 +2384,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Paypal gateway information")
 
     elif call.data == "gateway_site":
@@ -2385,11 +2394,12 @@ Choose a payment gateway to check your cards
 [⸙] 𝐍𝐀𝐌𝐄: <i>Site Based Charge</i>
 [⸙] 𝐂𝐌𝐃: /cc [Single]
 [⸙] 𝐂𝐌𝐃: /mcc [Mass]
-[⸙] 𝐒𝐭𝐎𝐭𝐮𝐬: Active ✅
+[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
 """
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2398,8 +2408,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Site Based gateway information")
 
     elif call.data == "gateway_authnet":
@@ -2412,6 +2423,7 @@ Choose a payment gateway to check your cards
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2420,8 +2432,9 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Authnet gateway information")
 
     elif call.data == "gateway_adyen":
@@ -2434,6 +2447,7 @@ Choose a payment gateway to check your cards
         markup = InlineKeyboardMarkup()
         btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
         markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2442,31 +2456,10 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Adyen gateway information")
-
-    elif call.data == "gateway_shopify":
-        shopify_text = f"""
-[⸙] 𝐍𝐀𝐌𝐄: <i>Auto Shopify Charge</i>
-[⸙] 𝐂𝐌𝐃: /sh [Single]
-[⸙] 𝐂𝐌𝐃: /msh [Mass]
-[⸙] 𝐒𝐭𝐚𝐭𝐮𝐬: Active ✅
-"""
-        markup = InlineKeyboardMarkup()
-        btn_back = InlineKeyboardButton("🔙 Back", callback_data="gateways")
-        markup.row(btn_back)
-        try:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text=shopify_text,
-                parse_mode='HTML',
-                reply_markup=markup
-            )
-        except:
-            pass
-        bot.answer_callback_query(call.id, "Auto Shopify gateway information")
 
     elif call.data == "tools":
         tools_text = f"""
@@ -2474,21 +2467,24 @@ Choose a payment gateway to check your cards
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.gate</code> URL - Gate Checker
 • Check payment gateways, captcha, and security
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.bin</code> BIN - BIN Lookup
-• Get detailed BIN information
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.au</code> - Stripe Auth 2
-<a href='https://t.me/stormxvup'>[⸙]</a> <code>.at</code> - Authnet [5$]
+
 ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
 """
+        markup = InlineKeyboardMarkup()
+        btn_back = InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 text=tools_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Tools information displayed")
 
     elif call.data == "help":
@@ -2497,6 +2493,7 @@ Choose a payment gateway to check your cards
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>How to use:</b>
 • Use commands like <code>.chk CC|MM|YY|CVV</code>
 • For mass check, reply to message with cards using <code>.mchk</code>
+• Set your Shopify site with <code>/seturl your-site.com</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>Support:</b>
 • Channel: @stormxvup
 • Contact for help and credits
@@ -2505,19 +2502,30 @@ Choose a payment gateway to check your cards
 • Results may vary by gateway
 ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
 """
+        markup = InlineKeyboardMarkup()
+        btn_back = InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 text=help_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Help information displayed")
 
     elif call.data == "myinfo":
+        users = load_users()
+        user_data = users.get(str(user.id), {})
+        total_checks = user_data.get("total_checks", 0)
+        approved = user_data.get("approved", 0)
+        declined = user_data.get("declined", 0)
+        
         myinfo_text = f"""
 👤 <b>Your Information:</b>
 <a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
@@ -2525,21 +2533,26 @@ Choose a payment gateway to check your cards
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
 📊 <b>Usage Statistics:</b>
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴛᴏᴛᴀʟ ᴄʜᴇᴄᴋs ⌁ 0
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴅ ⌁ 0
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ 0
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴜ ɴᴀᴠɪɢᴀᴛᴇ
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴛᴏᴛᴀʟ ᴄʜᴇᴄᴋs ⌁ {total_checks}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʟɪᴇᴅ ⌁ {approved}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ {declined}
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
 """
+        markup = InlineKeyboardMarkup()
+        btn_back = InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 text=myinfo_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Your information displayed")
 
     elif call.data == "back_to_main":
@@ -2564,6 +2577,7 @@ Choose a payment gateway to check your cards
         markup.row(btn3, btn4)
         btn5 = InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
         markup.row(btn5)
+        
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
@@ -2572,9 +2586,14 @@ Choose a payment gateway to check your cards
                 parse_mode='HTML',
                 reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing message: {e}")
+        
         bot.answer_callback_query(call.id, "Returned to main menu")
+
+    else:
+        # Handle any other callback data
+        bot.answer_callback_query(call.id, "Button not implemented yet")
 
 # Run the bot
 if __name__ == "__main__":
