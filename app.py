@@ -2120,14 +2120,22 @@ def handle_bin(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    user_id = message.from_user.id
-    init_user(user_id, message.from_user.username)
+    # --- hard guard: don't process this update twice for the same chat ---
+    if not hasattr(bot, "user_data"):
+        bot.user_data = {}
+    last = bot.user_data.get(message.chat.id, {})
+    if last.get("last_update_id") == message.message_id:
+        return  # already handled
+    bot.user_data[message.chat.id] = {"last_update_id": message.message_id}
+
+    save_users(message.from_user.id)
+
     user = message.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
-    join_date = message.date
-    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
-    credits = get_user_credits(user_id)
+    join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message.date))
+    credits = "0"
+
     caption = f"""
 ↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
 
@@ -2140,36 +2148,62 @@ def handle_start(message):
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
 
-    # Create inline keyboard buttons
-    markup = InlineKeyboardMarkup()
-    btn1 = InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
-    btn2 = InlineKeyboardButton("🛠️ Tools", callback_data="tools")
-    btn3 = InlineKeyboardButton("🛒 Shopify", callback_data="shopify_info")
-    markup.row(btn1, btn2, btn3)
-    btn4 = InlineKeyboardButton("❓ Help", callback_data="help")
-    btn5 = InlineKeyboardButton("👤 My Info", callback_data="myinfo")
-    markup.row(btn4, btn5)
-    btn6 = InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
-    markup.row(btn6)
+    # keyboard
+    markup = telebot.types.InlineKeyboardMarkup()
+    btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
+    btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+    btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
+    btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+    btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+    markup.row(btn1, btn2)
+    markup.row(btn3, btn4)
+    markup.row(btn5)
 
-    # Try to send the video first
+    # --- send exactly one message ---
     try:
-        msg = bot.copy_message(
-            from_chat_id='@video336',  # from https://t.me/video336/2
-            message_id=2,              # the "2" in the link
+        # First try to send as video
+        msg = bot.send_video(
+            chat_id=message.chat.id,
+            video="https://t.me/video336/2",  # Use 'video' parameter, not 'data'
             caption=caption,
-            parse_mode='HTML',
+            parse_mode="HTML",
             reply_markup=markup
-    )
-        
+        )
     except Exception as e:
-        print(f"copy_message failed: {e}")
-        msg = bot.send_message(
-        chat_id=message.chat.id,
-        text=caption + "\n\n🎥 Video preview unavailable",
-        parse_mode='HTML',
-        reply_markup=markup
-    )
+        print(f"Video send failed: {e}")
+        try:
+            # Fallback: send as document
+            msg = bot.send_document(
+                chat_id=message.chat.id,
+                document="https://t.me/video336/2",
+                caption=caption,
+                parse_mode="HTML",
+                reply_markup=markup
+            )
+        except Exception as e:
+            print(f"Document send failed: {e}")
+            try:
+                # Fallback: send as photo with different image
+                msg = bot.send_photo(
+                    chat_id=message.chat.id,
+                    photo="https://img.icons8.com/fluency/96/000000/telegram-app.png",
+                    caption=caption,
+                    parse_mode="HTML",
+                    reply_markup=markup
+                )
+            except Exception as e:
+                print(f"Photo send failed: {e}")
+                # Final fallback: send as text only
+                msg = bot.send_message(
+                    chat_id=message.chat.id,
+                    text=caption + "\n\n🎥 Video preview unavailable",
+                    parse_mode="HTML",
+                    reply_markup=markup,
+                    disable_web_page_preview=True
+                )
+
+    # store welcome message id (optional)
+    bot.user_data[message.chat.id]["welcome_msg_id"] = msg.message_id
 
 # Add callback handler for the buttons
 @bot.callback_query_handler(func=lambda call: True)
@@ -2180,7 +2214,11 @@ def handle_callback(call):
     credits = "0"  # Default credits
     
     if call.data == "gateways":
-        # Edit caption to show gateways information
+        # Create markup with back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         gateways_text = f"""
 🔍 <b>Gateways Available:</b>
 
@@ -2189,10 +2227,11 @@ def handle_callback(call):
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.py</code> - Paypal [0.1$]
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.qq</code> - Stripe Square [0.20$]
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.cc</code> - Site Based [1$]
+<a href='https://t.me/stormxvup'>[⸙]</a> <code>.sh</code> - Self Shopify [Custom]
 
 📊 <b>Mass Check Commands:</b>
 <code>.mchk</code> <code>.mvbv</code> <code>.mpy</code> 
-<code>.mqq</code> <code>.mcc</code>
+<code>.mqq</code> <code>.mcc</code> <code>.msh</code>
 
 ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
 """
@@ -2202,14 +2241,18 @@ def handle_callback(call):
                 message_id=call.message.message_id,
                 caption=gateways_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing gateways: {e}")
         bot.answer_callback_query(call.id, "Gateways information displayed")
     
     elif call.data == "tools":
-        # Edit caption to show tools information
+        # Create markup with back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         tools_text = f"""
 🛠️ <b>Available Tools:</b>
 
@@ -2230,20 +2273,25 @@ def handle_callback(call):
                 message_id=call.message.message_id,
                 caption=tools_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing tools: {e}")
         bot.answer_callback_query(call.id, "Tools information displayed")
     
     elif call.data == "help":
-        # Edit caption to show help information
+        # Create markup with back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         help_text = f"""
 ❓ <b>Help & Support</b>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>How to use:</b>
 • Use commands like <code>.chk CC|MM|YY|CVV</code>
 • For mass check, reply to message with cards using <code>.mchk</code>
+• Set Shopify site with <code>/seturl your-store.com</code>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> <b>Support:</b>
 • Channel: @stormxvup
@@ -2261,14 +2309,18 @@ def handle_callback(call):
                 message_id=call.message.message_id,
                 caption=help_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing help: {e}")
         bot.answer_callback_query(call.id, "Help information displayed")
     
     elif call.data == "myinfo":
-        # Edit caption to show user info
+        # Create markup with back button
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn_back = telebot.types.InlineKeyboardButton("🔙 Back", callback_data="back_to_main")
+        markup.row(btn_back)
+        
         myinfo_text = f"""
 👤 <b>Your Information:</b>
 
@@ -2279,7 +2331,7 @@ def handle_callback(call):
 
 📊 <b>Usage Statistics:</b>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴛᴏᴛᴀʟ ᴄʜᴇᴄᴋs ⌁ 0
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴅ ⌁ 0
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴛ ⌁ 0
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ 0
 
 ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ
@@ -2290,14 +2342,14 @@ def handle_callback(call):
                 message_id=call.message.message_id,
                 caption=myinfo_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing myinfo: {e}")
         bot.answer_callback_query(call.id, "Your information displayed")
     
     elif call.data == "back_to_main":
-        # Return to main welcome screen
+        # Return to main welcome screen with original buttons
         join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(call.message.date))
         main_text = f"""
 ↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
@@ -2310,16 +2362,27 @@ def handle_callback(call):
 
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ
 """
+        # Recreate original buttons
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn1 = telebot.types.InlineKeyboardButton("🔍 Gateways", callback_data="gateways")
+        btn2 = telebot.types.InlineKeyboardButton("🛠️ Tools", callback_data="tools")
+        btn3 = telebot.types.InlineKeyboardButton("❓ Help", callback_data="help")
+        btn4 = telebot.types.InlineKeyboardButton("👤 My Info", callback_data="myinfo")
+        btn5 = telebot.types.InlineKeyboardButton("📢 Channel", url="https://t.me/stormxvup")
+        markup.row(btn1, btn2)
+        markup.row(btn3, btn4)
+        markup.row(btn5)
+        
         try:
             bot.edit_message_caption(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 caption=main_text,
                 parse_mode='HTML',
-                reply_markup=call.message.reply_markup
+                reply_markup=markup
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Error editing back to main: {e}")
         bot.answer_callback_query(call.id, "Returned to main menu")
 
 # Run the bot
