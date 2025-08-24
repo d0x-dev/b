@@ -404,13 +404,13 @@ def handle_au(message):
         bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
         return
     if check_result["status"].upper() == "APPROVED":
-    send_to_group(
-        cc=cc,
-        gateway=check_result["gateway"],
-        response=check_result["response"],
-        bin_info=bin_info,
-        time_taken=time_taken,
-        user_info=message.from_user
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
     )
 
     command_parts = message.text.split()
