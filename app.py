@@ -16,7 +16,8 @@ import psutil
 import platform
 from datetime import datetime
 import io
-import bs4
+from bs4 import BeautifulSoup
+from googlesearch import search
 import stripe
 
 #====================================================================#
