@@ -6,3 +6,5 @@ httpx
 requests_toolbelt
 psutil
 stripe
+googlesearch-python
+beautifulsoup4
