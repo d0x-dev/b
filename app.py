@@ -2864,6 +2864,15 @@ def handle_msk(message):
 @bot.message_handler(commands=['skgen'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.skgen'))
 def handle_skgen(message):
+    user_id = message.from_user.id
+    
+    # Check credits for non-admin users
+    if user_id != OWNER_ID and user_id not in ADMIN_IDS:
+        init_user(user_id, message.from_user.username)
+        if not use_credits(user_id, 1):  # Deduct 1 credit for SK generation
+            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+            return
+
     command_parts = message.text.split()
     
     if len(command_parts) < 2:
@@ -2875,30 +2884,46 @@ def handle_skgen(message):
         if count <= 0:
             bot.reply_to(message, "❌ Count must be at least 1")
             return
-        elif count > 5000:
-            count = 5000
-            bot.reply_to(message, "⚠️ Maximum count is 5000. Generating 5000 SK keys.")
+        elif count > 100:
+            count = 100
+            bot.reply_to(message, "⚠️ Maximum count is 100. Generating 100 SK keys.")
     except ValueError:
         bot.reply_to(message, "❌ Invalid count. Please enter a number.")
         return
     
-    status_msg = bot.reply_to(message, f"🔄 Generating {count} SK keys...")
+    status_msg = bot.reply_to(message, f"🔄 Generating {count} live SK keys...")
 
-    def generate_keys():
+    def generate_live_sk_keys():
         try:
-            # Generate SK keys (dummy/test keys here, replace with your own generator)
-            sk_keys = [f"sk_test_{i:08x}" for i in range(count)]
+            # Generate realistic live Stripe secret keys
+            sk_keys = []
             
+            for i in range(count):
+                # Format: sk_live_[0-9a-zA-Z]{24}
+                # Live keys start with "sk_live_" followed by 24 characters
+                random_part = ''.join(random.choices(
+                    string.ascii_letters + string.digits, 
+                    k=24
+                ))
+                sk_key = f"sk_live_{random_part}"
+                sk_keys.append(sk_key)
+            
+            # Format the response
             if count <= 10:
                 formatted_keys = "\n".join(f"<a href='https://t.me/stormxvup'>[⸙]</a> <code>{key}</code>" for key in sk_keys)
                 result = f"""
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ 𝐒𝐊 𝐊𝐞𝐲 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝</a>
+<a href='https://t.me/stormxvup'>┃ 🔥 𝐋𝐢𝐯𝐞 𝐒𝐊 𝐊𝐞𝐲𝐬 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
 {formatted_keys}
 
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 𝐊𝐞𝐲𝐬 ➳ <i>{count}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐊𝐞𝐲 𝐓𝐲𝐩𝐞 ➳ <i>Live Stripe Secret Keys</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐅𝐨𝐫𝐦𝐚𝐭 ➳ <i>sk_live_xxxxxxxxxxxxxxxxxxxxxxxx</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+
 """
                 bot.edit_message_text(chat_id=message.chat.id,
                                       message_id=status_msg.message_id,
@@ -2906,23 +2931,48 @@ def handle_skgen(message):
                                       parse_mode='HTML')
             else:
                 # If >10 keys, generate a text file
-                filename = f'skgen_{message.from_user.id}.txt'
+                filename = f'sk_live_keys_{message.from_user.id}_{int(time.time())}.txt'
                 with open(filename, 'w') as f:
-                    f.write("\n".join(sk_keys))
+                    f.write("Live Stripe Secret Keys Generated:\n")
+                    f.write("=" * 50 + "\n\n")
+                    for i, key in enumerate(sk_keys, 1):
+                        f.write(f"{i:03d}. {key}\n")
                 
+                # Send the file
                 with open(filename, 'rb') as f:
-                    bot.send_document(message.chat.id, f, caption=f"Generated {count} SK keys 💳")
+                    bot.send_document(
+                        chat_id=message.chat.id,
+                        document=f,
+                        caption=f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 🔥 𝐋𝐢𝐯𝐞 𝐒𝐊 𝐊𝐞𝐲𝐬 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 𝐊𝐞𝐲𝐬 ➳ <i>{count}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐊𝐞𝐲 𝐓𝐲𝐩𝐞 ➳ <i>Live Stripe Secret Keys</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐅𝐨𝐫𝐦𝐚𝐭 ➳ <i>sk_live_xxxxxxxxxxxxxxxxxxxxxxxx</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+
+""",
+                        parse_mode='HTML',
+                        reply_to_message_id=message.message_id
+                    )
                 
+                # Clean up
+                os.remove(filename)
                 bot.delete_message(chat_id=message.chat.id, message_id=status_msg.message_id)
 
         except Exception as e:
-            bot.edit_message_text(chat_id=message.chat.id,
-                                  message_id=status_msg.message_id,
-                                  text=f"❌ Error generating SK keys: {str(e)}")
+            error_msg = f"❌ Error generating SK keys: {str(e)}"
+            try:
+                bot.edit_message_text(chat_id=message.chat.id,
+                                      message_id=status_msg.message_id,
+                                      text=error_msg)
+            except:
+                bot.reply_to(message, error_msg)
 
-    threading.Thread(target=generate_keys).start()
-
-
+    # Start generation in a separate thread
+    threading.Thread(target=generate_live_sk_keys).start()
 
 # Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
