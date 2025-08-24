@@ -21,6 +21,10 @@ from qq import check_qq_card
 from cc import process_cc_card
 #====================================================================#
 
+#==============================API===================================#
+CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count={}"
+#====================================================================#
+
 # Bot token
 BOT_TOKEN = "8398297374:AAE-bhGRfTu5CHsF6dgrR3rzglWQ2N4KmaI"
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -376,7 +380,7 @@ def handle_chk(message):
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
 
-    if check_result["status"].upper() == "APPROVED":
+    if check_result["status"] == "Approved":
         send_to_group(
             cc=cc,
             gateway=check_result["gateway"],
@@ -1928,6 +1932,134 @@ def handle_sh(message):
 
         threading.Thread(target=check_card).start()
 
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {str(e)}")
+
+# Handle both /gen and .gen
+@bot.message_handler(commands=['gen'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.gen'))
+def handle_gen(message):
+    try:
+        # Parse command
+        parts = message.text.split()
+        if len(parts) < 2:
+            bot.reply_to(message, "❌ Invalid format. Use /gen BIN [COUNT] or .gen BIN [COUNT]")
+            return
+        
+        bin_input = parts[1]
+        if len(bin_input) < 6:
+            bot.reply_to(message, "❌ Invalid BIN. BIN must be at least 6 digits.")
+            return
+        
+        # Default behavior - show 10 CCs in message if no count specified
+        if len(parts) == 2:
+            # Get BIN info
+            bin_info = get_bin_info(bin_input[:6])
+            bank = bin_info.get('bank', 'N/A') if bin_info else 'N/A'
+            country_name = bin_info.get('country_name', 'N/A') if bin_info else 'N/A'
+            flag = bin_info.get('country_flag', '🌍') if bin_info else '🌍'
+            card_type = bin_info.get('type', 'N/A') if bin_info else 'N/A'
+            
+            status_msg = bot.reply_to(message, "🔄 Generating 10 CCs...")
+            
+            def generate_inline():
+                try:
+                    response = requests.get(CC_GENERATOR_URL.format(bin_input, 10))
+                    if response.status_code == 200:
+                        ccs = response.text.strip().split('\n')
+                        formatted_ccs = "\n".join(f"<code>{cc}</code>" for cc in ccs)
+                        
+                        result = f"""
+<pre>Generated 10 CCs 💳</pre>
+
+{formatted_ccs}
+
+<pre>BIN-LOOKUP
+𝐁𝐈𝐍 ➳ {bin_input}
+𝐂𝐨𝐮𝐧𝐭𝐫𝐲➳ {country_name} {flag}
+𝐓𝐲𝐩𝐞 ➳ {card_type}
+𝐁𝐚𝐧𝐤 ➳ {bank}</pre>
+"""
+                        bot.edit_message_text(chat_id=message.chat.id,
+                                            message_id=status_msg.message_id,
+                                            text=result,
+                                            parse_mode='HTML')
+                    else:
+                        bot.edit_message_text(chat_id=message.chat.id,
+                                            message_id=status_msg.message_id,
+                                            text="❌ Failed to generate CCs. Please try again.")
+                except Exception as e:
+                    bot.edit_message_text(chat_id=message.chat.id,
+                                         message_id=status_msg.message_id,
+                                         text=f"❌ Error generating CCs: {str(e)}")
+            
+            threading.Thread(target=generate_inline).start()
+        
+        # If count is specified, always generate a file
+        else:
+            try:
+                count = int(parts[2])
+                if count <= 0:
+                    bot.reply_to(message, "❌ Count must be at least 1")
+                    return
+                elif count > 5000:
+                    count = 5000
+                    bot.reply_to(message, "⚠️ Maximum count is 5000. Generating 5000 CCs.")
+                
+                # Get BIN info
+                bin_info = get_bin_info(bin_input[:6])
+                bank = bin_info.get('bank', 'N/A') if bin_info else 'N/A'
+                country_name = bin_info.get('country_name', 'N/A') if bin_info else 'N/A'
+                flag = bin_info.get('country_flag', '🌍') if bin_info else '🌍'
+                card_type = bin_info.get('type', 'N/A') if bin_info else 'N/A'
+                
+                status_msg = bot.reply_to(message, f"🔄 Generating {count} CCs... This may take a moment.")
+                
+                def generate_file():
+                    try:
+                        # Generate in chunks to avoid memory issues
+                        chunk_size = 100
+                        chunks = count // chunk_size
+                        remainder = count % chunk_size
+                        
+                        with open(f'ccgen_{bin_input}.txt', 'w') as f:
+                            for _ in range(chunks):
+                                response = requests.get(CC_GENERATOR_URL.format(bin_input, chunk_size))
+                                if response.status_code == 200:
+                                    f.write(response.text)
+                                time.sleep(1)  # Be gentle with the API
+                            
+                            if remainder > 0:
+                                response = requests.get(CC_GENERATOR_URL.format(bin_input, remainder))
+                                if response.status_code == 200:
+                                    f.write(response.text)
+                        
+                        # Send the file
+                        with open(f'ccgen_{bin_input}.txt', 'rb') as f:
+                            bot.send_document(message.chat.id, f, caption=f"""
+Generated {count} CCs 💳
+━━━━━━━━━━━━━━━━━━
+𝐁𝐈𝐍 ➳ {bin_input}
+𝐂𝐨𝐮𝐧𝐭𝐫𝐲➳ {country_name} {flag}
+𝐓𝐲𝐩𝐞 ➳ {card_type}
+𝐁𝐚𝐧𝐤 ➳ {bank}
+━━━━━━━━━━━━━━━━━━
+""")
+                        
+                        # Clean up
+                        os.remove(f'ccgen_{bin_input}.txt')
+                        bot.delete_message(message.chat.id, status_msg.message_id)
+                    
+                    except Exception as e:
+                        bot.edit_message_text(chat_id=message.chat.id,
+                                            message_id=status_msg.message_id,
+                                            text=f"❌ Error generating CCs: {str(e)}")
+                
+                threading.Thread(target=generate_file).start()
+            
+            except ValueError:
+                bot.reply_to(message, "❌ Invalid count. Please provide a number.")
+    
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {str(e)}")
 
