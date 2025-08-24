@@ -16,10 +16,11 @@ import psutil
 import platform
 from datetime import datetime
 import io
+import stripe
+
 #====================================================================#
 
 #====================Gateway Files===================================#
-# Note: You need to have these files in the same directory
 from chk import check_card
 from au import process_card_au
 from at import process_card_at
