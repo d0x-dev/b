@@ -11,6 +11,7 @@ import os
 from urllib.parse import urlparse
 
 #====================Gateway Files===================================#
+# Note: You need to have these files in the same directory
 from chk import check_card
 from au import process_card_au
 from at import process_card_at
@@ -61,6 +62,20 @@ def save_groups(groups):
 
 # Initialize user data
 def init_user(user_id, username=None):
+    users = load_users()
+    if str(user_id) not in users:
+        users[str(user_id)] = {
+            "credits": CREDITS_PER_HOUR,
+            "last_reset": int(time.time()),
+            "username": username,
+            "total_checks": 0,
+            "approved": 0,
+            "declined": 0
+        }
+        save_users(users)
+
+# Save user function (missing from original code)
+def save_user(user_id, username=None):
     users = load_users()
     if str(user_id) not in users:
         users[str(user_id)] = {
@@ -271,7 +286,7 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
+<a href='極速赛车群'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>{processing_time:.2f} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
@@ -289,17 +304,17 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
                 emoji = '⚠️'
             else:
                 emoji = '❓'
-        response += f"<code>{result['card']}</code>\n𝐒𝐭𝐚𝐭𝐮𝐬 ⌁ {emoji} <i>{result['response']}</i>\n<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>\n"
+        response += f"<code>{result['card']}</code>\n𝐒𝐭𝐎𝐭𝐮𝐬 ⌁ {emoji} <i>{result['response']}</i>\n<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>\n"
     return response
 
 def format_mass_check_processing(total_cards, checked, gateway):
     return f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
+<a href='https://t.me/stormxvup'>極速赛车群'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>0</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>0</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>0</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐌 ⌁ <i>0</i>
+<a href='https://t.me/stormxvup'>[極速赛车群'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>0</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>0.00 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>Processing cards...</a>"""
@@ -1347,7 +1362,6 @@ def handle_mat(message):
             bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
 
         if not use_credits(user_id, len(cards)):
-            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
             return
 
         initial_msg = f"🚀 Starting mass AT check of {len(cards)} cards..."
@@ -1646,6 +1660,7 @@ def check_shopify_cc(cc, site_info):
                     status = 'APPROVED_OTP'
                 else:
                     bot_response = api_message
+                    status = 'DECLINED'
             else:
                 bot_response = api_message
                 
@@ -1685,9 +1700,8 @@ def format_shopify_response(result, user_full_name, processing_time):
     # Determine user status
     if user_id_str == "7820713047":
         user_status = "Owner"
-    elif user_id_str in ADMIN_IDS:
+    elif int(user_id_str) in ADMIN_IDS:
         user_status = "Admin"
-  
     else:
         user_status = "Free"
 
@@ -1700,7 +1714,6 @@ def format_shopify_response(result, user_full_name, processing_time):
    ↳ <code>{result['card']}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{result['gateway']}</i>  
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{result['message']}</i>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {result['brand']}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {result['type']}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {result['country']}
@@ -1999,7 +2012,7 @@ def format_gate_result(result, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞 ➳ <i>{result.get('cloudflare', 'Unknown')}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐞𝐜𝐮𝐫𝐢𝐭𝐲 ➳ <i>{result.get('security', 'Unknown')}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐕𝐕/𝐂𝐕𝐂 ➳ <i>{result.get('cvv_cvc_status', 'Unknown')}</i>
+<a href='https://t.me/stormxvup'>[�]</a> 𝐂𝐕𝐕/𝐂𝐕𝐂 ➳ <i>{result.get('cvv_cvc_status', 'Unknown')}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐈𝐧𝐛𝐮𝐢𝐥𝐭 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <i>{result.get('inbuilt_system', 'Unknown')}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <i>{result.get('status_code', 'N/A')}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
@@ -2121,7 +2134,7 @@ def handle_bin(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    save_user(message.from_user.id)
+    save_user(message.from_user.id, message.from_user.username)
 
     # Get user information
     user = message.from_user
@@ -2130,8 +2143,9 @@ def handle_start(message):
     join_date = message.date  # This is a timestamp, convert to readable format
     join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
 
-    # Credits (you can implement your own credit system)
-    credits = "0"  # Default credits
+    # Get user credits
+    users = load_users()
+    credits = users.get(str(user.id), {}).get("credits", 0)
 
     # Create the caption with formatting
     caption = f"""↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x<a href='https://t.me/stormxvup'>[⸙]</a>
@@ -2224,7 +2238,10 @@ def handle_callback(call):
     user = call.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
-    credits = "0"  # Default credits
+    
+    # Get user credits
+    users = load_users()
+    credits = users.get(str(user.id), {}).get("credits", 0)
 
     if call.data == "gateways":
         # Show gateway selection menu
@@ -2589,7 +2606,7 @@ Choose a payment gateway to check your cards"""
 ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code><a href='https://t.me/stormxvup'>[⸙]</a>
 ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i><a href='https://t.me/stormxvup'>[⸙]</a>
 ᴄʀᴇᴅɪᴛs ⌁ {credits}
-↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
+↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴢᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
 
         # Create the original main menu buttons
         markup = telebot.types.InlineKeyboardMarkup()
