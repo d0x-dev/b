@@ -5,3 +5,4 @@ flask
 httpx
 requests_toolbelt
 psutil
+stripe
