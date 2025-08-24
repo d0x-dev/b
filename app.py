@@ -1,3 +1,4 @@
+#=============================IMPORTS==============================#
 import telebot
 import requests
 import json
@@ -9,6 +10,10 @@ import re
 from datetime import datetime, timedelta
 import os
 from urllib.parse import urlparse
+import psutil
+import platform
+from datetime import datetime
+#====================================================================#
 
 #====================Gateway Files===================================#
 # Note: You need to have these files in the same directory
@@ -27,10 +32,13 @@ from svb import process_card_svb
 CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count={}"
 #====================================================================#
 
+#==========================BOT=======================================#
 # Bot token
 BOT_TOKEN = "8398297374:AAE-bhGRfTu5CHsF6dgrR3rzglWQ2N4KmaI"
 bot = telebot.TeleBot(BOT_TOKEN)
+#=====================================================================#
 
+#===========================DATA AND INFO=============================#
 # Configuration
 OWNER_ID = 8026335089  # Replace with your Telegram ID
 ADMIN_IDS = [987654321, 112233445]  # Replace with admin Telegram IDs
@@ -40,6 +48,7 @@ APPROVED_CARDS_GROUP_ID = -1002990374080
 CREDIT_RESET_INTERVAL = 3600  # 1 hour in seconds
 CREDITS_PER_HOUR = 100  # Credits per hour
 MAX_MASS_CHECK = 10  # Max cards per mass check
+#=====================================================================#
 
 # Load user data from file
 def load_users():
@@ -371,6 +380,8 @@ def format_mass_check_processing(total_cards, checked, gateway):
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>Processing cards...</a>"""
 
+
+#=======================================================GATES========================================================================#
 # Handle /chk command
 @bot.message_handler(commands=['chk'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.chk'))
@@ -396,7 +407,7 @@ def handle_chk(message):
     bin_number = cc.split('|')[0][:6]
     bin_info = get_bin_info(bin_number) or {}
 
-    checking_msg = checking_status_format(cc, "Stripe Auth 2th 2th", bin_info)
+    checking_msg = checking_status_format(cc, "Stripe Auth", bin_info)
     status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
 
     start_time = time.time()
@@ -533,7 +544,7 @@ def handle_mass(message):
             bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
             return
 
-        initial_msg = f"<pre>↯ Starting Mass Stripe Auth Check of {len(cards)} Cards... </pre>"
+        initial_msg = f"<pre>↯ Starting Mass Stripe Auth 2 Check of {len(cards)} Cards... </pre>"
         status_message = bot.reply_to(message, initial_msg, parse_mode='HTML')
 
         try:
@@ -2299,6 +2310,211 @@ def handle_msvb(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+
+#=============================================================================================================================================#
+
+# System monitoring functions
+def get_system_info():
+    """Get system information"""
+    try:
+        # CPU usage
+        cpu_usage = psutil.cpu_percent(interval=1)
+        
+        # Memory usage
+        memory = psutil.virtual_memory()
+        total_memory = round(memory.total / (1024 ** 3), 2)  # GB
+        used_memory = round(memory.used / (1024 ** 3), 2)    # GB
+        memory_percent = memory.percent
+        
+        # Disk usage
+        disk = psutil.disk_usage('/')
+        total_disk = round(disk.total / (1024 ** 3), 2)      # GB
+        used_disk = round(disk.used / (1024 ** 3), 2)        # GB
+        disk_percent = disk.percent
+        
+        # System info
+        system = platform.system()
+        release = platform.release()
+        architecture = platform.architecture()[0]
+        
+        # Boot time
+        boot_time = datetime.fromtimestamp(psutil.boot_time())
+        uptime = datetime.now() - boot_time
+        uptime_str = str(uptime).split('.')[0]  # Remove microseconds
+        
+        # Current time (Kolkata timezone)
+        kolkata_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        return {
+            'cpu_usage': cpu_usage,
+            'total_memory': total_memory,
+            'used_memory': used_memory,
+            'memory_percent': memory_percent,
+            'total_disk': total_disk,
+            'used_disk': used_disk,
+            'disk_percent': disk_percent,
+            'system': system,
+            'release': release,
+            'architecture': architecture,
+            'uptime': uptime_str,
+            'kolkata_time': kolkata_time
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+def get_bot_stats():
+    """Get bot statistics"""
+    try:
+        users = load_users()
+        total_users = len(users)
+        
+        # Calculate total checks, approved, declined
+        total_checks = 0
+        total_approved = 0
+        total_declined = 0
+        
+        for user_id, user_data in users.items():
+            total_checks += user_data.get('total_checks', 0)
+            total_approved += user_data.get('approved', 0)
+            total_declined += user_data.get('declined', 0)
+        
+        # Calculate active users (users with credits > 0)
+        active_users = sum(1 for user_data in users.values() if user_data.get('credits', 0) > 0)
+        
+        # Calculate today's checks
+        today = datetime.now().date()
+        today_checks = 0
+        today_approved = 0
+        
+        # This would require storing check timestamps - for now we'll use approximation
+        # You might want to enhance your user data structure to store check history
+        
+        return {
+            'total_users': total_users,
+            'active_users': active_users,
+            'total_checks': total_checks,
+            'total_approved': total_approved,
+            'total_declined': total_declined,
+            'approval_rate': (total_approved / total_checks * 100) if total_checks > 0 else 0
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+# Handle /stats command (Admin/Owner only)
+@bot.message_handler(commands=['stats'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.stats'))
+def handle_stats(message):
+    user_id = message.from_user.id
+    
+    # Check if user is owner or admin
+    if user_id != OWNER_ID and user_id not in ADMIN_IDS:
+        bot.reply_to(message, "❌ This command is only available for admins and owner.")
+        return
+    
+    try:
+        # Get bot statistics
+        bot_stats = get_bot_stats()
+        if 'error' in bot_stats:
+            bot.reply_to(message, f"❌ Error getting stats: {bot_stats['error']}")
+            return
+        
+        # Get system information
+        system_info = get_system_info()
+        if 'error' in system_info:
+            bot.reply_to(message, f"❌ Error getting system info: {system_info['error']}")
+            return
+        
+        # Format the response
+        stats_text = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐁𝐨𝐭 𝐒𝐭𝐚𝐭𝐢𝐬𝐭𝐢𝐜𝐬 📊</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 𝐔𝐬𝐞𝐫𝐬 ➳ <i>{bot_stats['total_users']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐜𝐭𝐢𝐯𝐞 𝐔𝐬𝐞𝐫𝐬 ➳ <i>{bot_stats['active_users']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 𝐂𝐡𝐞𝐜𝐤𝐬 ➳ <i>{bot_stats['total_checks']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ➳ <i>{bot_stats['total_approved']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ➳ <i>{bot_stats['total_declined']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐚𝐥 𝐑𝐚𝐭𝐞 ➳ <i>{bot_stats['approval_rate']:.2f}%</i>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <i>{system_info['system']} {system_info['release']} [{system_info['architecture']}]</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞 ➳ <i>{system_info['cpu_usage']}%</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐀𝐌 𝐔𝐬𝐚𝐠𝐞 ➳ <i>{system_info['used_memory']}GB / {system_info['total_memory']}GB ({system_info['memory_percent']}%)</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐢𝐬𝐤 𝐔𝐬𝐚𝐠𝐞 ➳ <i>{system_info['used_disk']}GB / {system_info['total_disk']}GB ({system_info['disk_percent']}%)</i>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐔𝐩𝐭𝐢𝐦𝐞 ➳ <i>{system_info['uptime']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐊𝐨𝐥𝐤𝐚𝐭𝐚 𝐓𝐢𝐦𝐞 ➳ <i>{system_info['kolkata_time']}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐨𝐭 𝐁𝐲 ➳ <a href='https://t.me/stormxvup'>⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲</a>
+"""
+        
+        bot.reply_to(message, stats_text, parse_mode='HTML')
+        
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error generating statistics: {str(e)}")
+
+# Handle /ping command
+@bot.message_handler(commands=['ping'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.ping'))
+def handle_ping(message):
+    try:
+        # Calculate bot response time
+        start_time = time.time()
+        msg = bot.reply_to(message, "🏓 Pinging...")
+        end_time = time.time()
+        ping_time = round((end_time - start_time) * 1000, 2)  # Convert to milliseconds
+        
+        # Get system information
+        system_info = get_system_info()
+        if 'error' in system_info:
+            bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=msg.message_id,
+                text=f"❌ Error: {system_info['error']}"
+            )
+            return
+        
+        # Format the response
+        ping_text = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐒𝐲𝐬𝐭𝐞𝐦 𝐒𝐭𝐚𝐭𝐮𝐬 🖥️</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐢𝐧𝐠 ➳ <i>{ping_time}ms</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐲𝐬𝐭𝐞𝐦 ➳ <i>{system_info['system']} {system_info['release']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐫𝐜𝐡𝐢𝐭𝐞𝐜𝐭𝐮𝐫𝐞 ➳ <i>{system_info['architecture']}</i>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞 ➳ <i>{system_info['cpu_usage']}%</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐀𝐌 𝐔𝐬𝐚𝐠𝐞 ➳ <i>{system_info['used_memory']}GB / {system_info['total_memory']}GB ({system_info['memory_percent']}%)</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐢𝐬𝐤 𝐔𝐬𝐚𝐠𝐞 ➳ <i>{system_info['used_disk']}GB / {system_info['total_disk']}GB ({system_info['disk_percent']}%)</i>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐔𝐩𝐭𝐢𝐦𝐞 ➳ <i>{system_info['uptime']}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐊𝐨𝐥𝐤𝐚𝐭𝐚 𝐓𝐢𝐦𝐞 ➳ <i>{system_info['kolkata_time']}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐨𝐭 𝐁𝐲 ➳ <a href='https://t.me/stormxvup'>⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲</a>
+"""
+        
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=msg.message_id,
+            text=ping_text,
+            parse_mode='HTML'
+        )
+        
+    except Exception as e:
+        try:
+            bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=msg.message_id,
+                text=f"❌ Error: {str(e)}"
+            )
+        except:
+            bot.reply_to(message, f"❌ Error: {str(e)}")
 
 # Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
