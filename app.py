@@ -40,8 +40,8 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 #===========================DATA AND INFO=============================#
 # Configuration
-OWNER_ID = 8026335089  # Replace with your Telegram ID
-ADMIN_IDS = [987654321, 112233445]  # Replace with admin Telegram IDs
+OWNER_ID = 8026335083  # Replace with your Telegram ID
+ADMIN_IDS = [8026335083, 112233445]  # Replace with admin Telegram IDs
 USER_DATA_FILE = "users.json"
 GROUP_DATA_FILE = "groups.json"
 APPROVED_CARDS_GROUP_ID = -1002990374080
