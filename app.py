@@ -2873,6 +2873,93 @@ Choose a payment gateway to check your cards"""
             pass
         bot.answer_callback_query(call.id, "Returned to main menu")
 
+# Handle /info command
+@bot.message_handler(commands=['info'])
+def handle_info(message):
+    try:
+        user = message.from_user
+        chat = message.chat
+        
+        # Get user info
+        mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
+        username = f"@{user.username}" if user.username else "None"
+        user_id = user.id
+        chat_id = chat.id
+        
+        # Calculate member since date
+        join_date = message.date
+        join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(join_date))
+        
+        # Get user status
+        status = get_user_status(user_id)
+        
+        # Get user credits
+        users = load_users()
+        credits = users.get(str(user_id), {}).get("credits", 0)
+        
+        info_text = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐔𝐬𝐞𝐫 𝐈𝐧𝐟𝐨</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> ɴᴀᴍᴇ ➳ {mention}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ➳ <i>{username}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀ ɪᴅ ➳ <code>{user_id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʜᴀᴛ ɪᴅ ➳ <code>{chat_id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴍᴇᴍʙᴇʀ sɪɴᴄᴇ ➳ {join_date_formatted}
+
+<a href='https://t.me/stormxvup'>[⸙]</a> sᴛᴀᴛᴜs ➳ [ {status} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ➳ {credits}
+
+<a href='https://t.me/stormxvup'>[⸙]</a> ʙᴏᴛ ʙʏ ➳ <a href='https://t.me/stormxvup'>⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲</a>
+"""
+        
+        bot.reply_to(message, info_text, parse_mode='HTML')
+        
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {str(e)}")
+
+# Handle /id command
+@bot.message_handler(commands=['id'])
+def handle_id(message):
+    try:
+        user = message.from_user
+        chat = message.chat
+        
+        # Check if it's a group chat
+        if chat.type in ['group', 'supergroup']:
+            response = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐂𝐡𝐚𝐭 𝐈𝐧𝐟𝐨</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐔𝐬𝐞𝐫 𝐈𝐃 ➳ <code>{user.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐡𝐚𝐭 𝐈𝐃 ➳ <code>{chat.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐡𝐚𝐭 𝐓𝐲𝐩𝐞 ➳ {chat.type.capitalize()}
+"""
+            
+            if chat.title:
+                response += f"<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐡𝐚𝐭 𝐍𝐚𝐦𝐞 ➳ {chat.title}\n"
+                
+        else:
+            # Private chat
+            response = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐔𝐬𝐞𝐫 𝐈𝐧𝐟𝐨</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐔𝐬𝐞𝐫 𝐈𝐃 ➳ <code>{user.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐡𝐚𝐭 𝐈𝐃 ➳ <code>{chat.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐡𝐚𝐭 𝐓𝐲𝐩𝐞 ➳ Private
+"""
+        
+        response += f"\n<a href='https://t.me/stormxvup'>[⸙]</a> ʙᴏᴛ ʙʏ ➳ <a href='https://t.me/stormxvup'>⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲</a>"
+        
+        bot.reply_to(message, response, parse_mode='HTML')
+        
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {str(e)}")
+
 # Run the bot
 if __name__ == "__main__":
     print("Bot is running...")
