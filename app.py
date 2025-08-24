@@ -142,6 +142,18 @@ def deduct_credits(user_id, amount):
         return True
     return False
 
+# Load group data from file (improved)
+def load_groups():
+    try:
+        with open(GROUP_DATA_FILE, 'r') as f:
+            data = json.load(f)
+            # Ensure we return a list of integers
+            if isinstance(data, list):
+                return [int(x) for x in data if str(x).lstrip('-').isdigit()]
+            return []
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
 # Add this near the top with other constants
 USER_SITES_FILE = "user_sites.json"
 
@@ -2394,6 +2406,181 @@ def handle_stats(message):
         
     except Exception as e:
         bot.reply_to(message, f"❌ Error generating statistics: {str(e)}")
+
+# Handle /broad command (Admin/Owner only)
+@bot.message_handler(commands=['broad'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.broad'))
+def handle_broadcast(message):
+    user_id = message.from_user.id
+    
+    # Check if user is owner or admin
+    if user_id != OWNER_ID and user_id not in ADMIN_IDS:
+        bot.reply_to(message, "❌ This command is only available for admins and owner.")
+        return
+    
+    if not message.reply_to_message:
+        bot.reply_to(message, "❌ Please reply to the message you want to broadcast.")
+        return
+    
+    msg = message.reply_to_message
+    
+    # Get all users from user data
+    users = load_users()
+    all_users = list(users.keys())  # Get all user IDs
+    
+    # Get all groups from group data
+    groups = load_groups()
+    all_groups = groups  # This should be a list of group IDs
+    
+    # Combine all targets
+    targets = []
+    
+    # Add users (convert to integers)
+    for user_id in all_users:
+        try:
+            targets.append(int(user_id))
+        except:
+            pass
+    
+    # Add groups
+    targets.extend(all_groups)
+    
+    total = len(targets)
+    success = 0
+    failed = 0
+    errors = 0
+    start_time = time.time()
+    
+    # Initial status message
+    status_text = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 📢 𝐁𝐫𝐨𝐚𝐝𝐜𝐚𝐬𝐭𝐢𝐧𝐠 𝐌𝐞𝐬𝐬𝐚𝐠𝐞</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ➳ <code>{total}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 ➳ <code>{success}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐅𝐚𝐢𝐥𝐞𝐝 ➳ <code>{failed}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫𝐬 ➳ <code>{errors}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ➳ 0.00 𝐒
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ 𝐒𝐭𝐚𝐫𝐭𝐢𝐧𝐠...
+"""
+    status_msg = bot.reply_to(message, status_text, parse_mode='HTML')
+    
+    # Function to update status
+    def update_status():
+        elapsed = time.time() - start_time
+        updated_status = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 📢 𝐁𝐫𝐨𝐚𝐝𝐜𝐚𝐬𝐭 𝐑𝐞𝐬𝐮𝐥𝐭𝐬</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ➳ <code>{total}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 ➳ <code>{success}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐅𝐚𝐢𝐥𝐞𝐝 ➳ <code>{failed}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫𝐬 ➳ <code>{errors}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ➳ <code>{elapsed:.2f} 𝐒</code>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬 ➳ <code>{success + failed + errors}/{total}</code>
+"""
+        try:
+            bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=status_msg.message_id,
+                text=updated_status,
+                parse_mode='HTML'
+            )
+        except:
+            pass
+    
+    # Broadcast to all targets
+    for idx, target_id in enumerate(targets):
+        try:
+            # Handle different message types
+            if msg.text:
+                bot.send_message(target_id, msg.text, parse_mode='HTML')
+            elif msg.caption and (msg.photo or msg.video or msg.document or msg.audio):
+                caption = msg.caption
+                if msg.photo:
+                    bot.send_photo(target_id, msg.photo[-1].file_id, caption=caption, parse_mode='HTML')
+                elif msg.video:
+                    bot.send_video(target_id, msg.video.file_id, caption=caption, parse_mode='HTML')
+                elif msg.document:
+                    bot.send_document(target_id, msg.document.file_id, caption=caption, parse_mode='HTML')
+                elif msg.audio:
+                    bot.send_audio(target_id, msg.audio.file_id, caption=caption, parse_mode='HTML')
+            elif msg.photo:
+                bot.send_photo(target_id, msg.photo[-1].file_id, parse_mode='HTML')
+            elif msg.video:
+                bot.send_video(target_id, msg.video.file_id, parse_mode='HTML')
+            elif msg.document:
+                bot.send_document(target_id, msg.document.file_id, parse_mode='HTML')
+            elif msg.sticker:
+                bot.send_sticker(target_id, msg.sticker.file_id)
+            elif msg.voice:
+                bot.send_voice(target_id, msg.voice.file_id)
+            elif msg.audio:
+                bot.send_audio(target_id, msg.audio.file_id, parse_mode='HTML')
+            else:
+                # If we can't determine the message type, send as text
+                try:
+                    bot.send_message(target_id, "📢 Broadcast message", parse_mode='HTML')
+                    if msg.text:
+                        bot.send_message(target_id, msg.text, parse_mode='HTML')
+                except:
+                    errors += 1
+                    continue
+            
+            success += 1
+            
+        except telebot.apihelper.ApiTelegramException as e:
+            error_msg = str(e).lower()
+            if any(x in error_msg for x in ['chat not found', 'bot was blocked', 'user is deactivated', 'chat not exist']):
+                # These are expected failures - user blocked bot, chat doesn't exist, etc.
+                failed += 1
+            else:
+                # Other API errors
+                print(f"API Error sending to {target_id}: {e}")
+                errors += 1
+                
+        except Exception as e:
+            print(f"Error sending to {target_id}: {e}")
+            errors += 1
+        
+        # Update status every 5 sends or at the end
+        if (idx + 1) % 5 == 0 or (idx + 1) == total:
+            update_status()
+            time.sleep(0.1)  # Small delay to avoid rate limiting
+    
+    # Final status update
+    update_status()
+    
+    # Send completion message
+    elapsed = time.time() - start_time
+    completion_text = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ ✅ 𝐁𝐫𝐨𝐚𝐝𝐜𝐚𝐬𝐭 𝐂𝐨𝐦𝐩𝐥𝐞𝐭𝐞𝐝</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 𝐓𝐚𝐫𝐠𝐞𝐭𝐬 ➳ <code>{total}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐒𝐞𝐧𝐭 ➳ <code>{success}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐅𝐚𝐢𝐥𝐞𝐝 ➳ <code>{failed}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫𝐬 ➳ <code>{errors}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐮𝐜𝐜𝐞𝐬𝐬 𝐑𝐚𝐭𝐞 ➳ <code>{(success/total*100):.1f}%</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 𝐓𝐢𝐦𝐞 ➳ <code>{elapsed:.2f} 𝐒</code>
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐨𝐚𝐝𝐜𝐚𝐬𝐭 𝐁𝐲 ➳ <a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>
+"""
+    
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=completion_text,
+        parse_mode='HTML',
+        reply_to_message_id=message.message_id
+    )
 
 # Handle /ping command
 @bot.message_handler(commands=['ping'])
