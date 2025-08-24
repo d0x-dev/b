@@ -3242,7 +3242,7 @@ def handle_gen(message):
             # Get BIN info
             bin_info = get_bin_info(bin_input[:6])
             bank = bin_info.get('bank', 'N/A') if bin_info else 'N/A'
-            country_name = bin_info.get('country_name', 'N/A') if bin_info else 'N/A'
+            country_name = bin_info.get('country', 'N/A') if bin_info else 'N/A'
             flag = bin_info.get('country_flag', '🌍') if bin_info else '🌍'
             card_type = bin_info.get('type', 'N/A') if bin_info else 'N/A'
             
@@ -3262,7 +3262,7 @@ def handle_gen(message):
 
 <pre>BIN-LOOKUP
 𝐁𝐈𝐍 ➳ {bin_input}
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲➳ {country_name} {flag}
+𝐂𝐨𝐮𝐧𝐭𝐫𝐲➳ {bin_info.get('country', 'UNKNOWN')} {flag}
 𝐓𝐲𝐩𝐞 ➳ {card_type}
 𝐁𝐚𝐧𝐤 ➳ {bank}</pre>
 """
@@ -3326,7 +3326,7 @@ def handle_gen(message):
 Generated {count} CCs 💳
 ━━━━━━━━━━━━━━━━━━
 𝐁𝐈𝐍 ➳ {bin_input}
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲➳ {country_name} {flag}
+𝐂𝐨𝐮𝐧𝐭𝐫𝐲➳ {bin_info.get('country', 'UNKNOWN')} {flag}
 𝐓𝐲𝐩𝐞 ➳ {card_type}
 𝐁𝐚𝐧𝐤 ➳ {bank}
 ━━━━━━━━━━━━━━━━━━
@@ -4126,7 +4126,7 @@ Choose a payment gateway to check your cards"""
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
 
-↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴢᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
+↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
 
         # Create the original main menu buttons
         markup = telebot.types.InlineKeyboardMarkup()
