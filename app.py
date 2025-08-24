@@ -286,7 +286,7 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>
-<a href='極速赛车群'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>{processing_time:.2f} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
@@ -311,10 +311,10 @@ def format_mass_check_processing(total_cards, checked, gateway):
     return f"""<a href='https://t.me/stormxvup'>↯  𝗠𝗮𝘀𝘀 𝗖𝗵𝗲𝗰𝗸</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐨𝐭𝐚𝐥 ⌁ <i>{checked}/{total_cards}</i>
-<a href='https://t.me/stormxvup'>極速赛车群'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>0</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐌 ⌁ <i>0</i>
-<a href='https://t.me/stormxvup'>[極速赛车群'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>0</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>0</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>0.00 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>Processing cards...</a>"""
@@ -1526,9 +1526,9 @@ def handle_seturl(message):
         bot.edit_message_text(chat_id=message.chat.id,
                             message_id=status_msg.message_id,
                             text=f"""
-┏━━━━━━━⍟
-┃ 𝗦𝗶𝘁𝗲 𝗔𝗱𝗱𝗲𝗱 ✅
-┗━━━━━━━━━━━⊛
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ 𝗦𝗶𝘁𝗲 𝗔𝗱𝗱𝗲𝗱 ✅</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
                             
 <a href='https://t.me/stormxvup'>[⸙]</a>❖ 𝗦𝗶𝘁𝗲 ➳ <code>{url}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a>❖ 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ➳ {api_message}
@@ -1992,6 +1992,7 @@ def format_gate_result(result, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ❌</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <code>{result.get('error', 'Unknown error')}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 𝐂𝐨𝐝𝐞 ➳ <i>{result.get('status_code', 'N/A')}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
@@ -2006,6 +2007,7 @@ def format_gate_result(result, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 𝐋𝐨𝐨𝐤𝐮𝐩 𝐑𝐞𝐬𝐮𝐥𝐭 ✅</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐢𝐭𝐞 ➳ <code>{result.get('url', 'N/A')}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐚𝐲𝐦𝐞𝐧𝐭 𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬 ➳ <i>{payment_gateways}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐚𝐩𝐭𝐜𝐡𝐚 ➳ <i>{captcha_types}</i>
@@ -2018,7 +2020,7 @@ def format_gate_result(result, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {user_status} ]
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗢𝗧𝗔𝗟 𝗧𝗜𝗠𝗘 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
 
 @bot.message_handler(commands=['gate'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.gate'))
@@ -2057,6 +2059,7 @@ def format_bin_result(bin_info, bin_number, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 𝐁𝐈𝐍 𝐈𝐧𝐟𝐨 ❌</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <code>No information found for BIN: {bin_number}</code>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {user_status} ]
@@ -2074,6 +2077,7 @@ def format_bin_result(bin_info, bin_number, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 𝐁𝐈𝐍 𝐈𝐧𝐟𝐨</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐈𝐍 ➳ <code>{bin_number}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ➳ {bank}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ➳ {brand}
@@ -2131,7 +2135,6 @@ def handle_bin(message):
         parse_mode='HTML'
     )
 
-
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     save_user(message.from_user.id, message.from_user.username)
@@ -2148,12 +2151,14 @@ def handle_start(message):
     credits = users.get(str(user.id), {}).get("credits", 0)
 
     # Create the caption with formatting
-    caption = f"""↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x<a href='https://t.me/stormxvup'>[⸙]</a>
-ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}<a href='https://t.me/stormxvup'>[⸙]</a>
-ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}<a href='https://t.me/stormxvup'>[⸙]</a>
-ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code><a href='https://t.me/stormxvup'>[⸙]</a>
-ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i><a href='https://t.me/stormxvup'>[⸙]</a>
-ᴄʀᴇᴅɪᴛs ⌁ {credits}
+    caption = f"""↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x
+
+<a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
+
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
 
     # Create inline keyboard buttons - 2 buttons per line
@@ -2526,12 +2531,14 @@ Choose a payment gateway to check your cards"""
     elif call.data == "tools":
         # Edit caption to show tools information
         tools_text = f"""🛠️ <b>Available Tools:</b>
+
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.gate</code> URL - Gate Checker
 • Check payment gateways, captcha, and security
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.bin</code> BIN - BIN Lookup
 • Get detailed BIN information
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.au</code> - Stripe Auth 2
 <a href='https://t.me/stormxvup'>[⸙]</a> <code>.at</code> - Authnet [5$]
+
 ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ"""
 
         try:
@@ -2575,15 +2582,13 @@ Choose a payment gateway to check your cards"""
     elif call.data == "myinfo":
         # Edit caption to show user info
         myinfo_text = f"""👤 <b>Your Information:</b>
+
 <a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀ ɪᴅ ⌁ <code>{user.id}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
-📊 <b>Usage Statistics:</b>
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴛᴏᴛᴀʟ ᴄʜᴇᴄᴋs ⌁ 0
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴀᴘᴘʀᴏᴠᴇᴅ ⌁ 0
-<a href='https://t.me/stormxvup'>[⸙]</a> ᴅᴇᴄʟɪɴᴇᴅ ⌁ 0
-ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴜ ɴᴀᴠɪɢᴀᴛᴇ"""
+
+ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ɴᴀᴠɪɢᴀᴛᴇ"""
 
         try:
             bot.edit_message_caption(
@@ -2601,11 +2606,13 @@ Choose a payment gateway to check your cards"""
         # Return to main welcome screen
         join_date_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(call.message.date))
         main_text = f"""↯ ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ sᴛᴏʀᴍ x<a href='https://t.me/stormxvup'>[⸙]</a>
-ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}<a href='https://t.me/stormxvup'>[⸙]</a>
-ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}<a href='https://t.me/stormxvup'>[⸙]</a>
-ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code><a href='https://t.me/stormxvup'>[⸙]</a>
-ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i><a href='https://t.me/stormxvup'>[⸙]</a>
-ᴄʀᴇᴅɪᴛs ⌁ {credits}
+
+<a href='https://t.me/stormxvup'>[⸙]</a> ғᴜʟʟ ɴᴀᴍᴇ ⌁ {mention}
+<a href='https://t.me/stormxvup'>[⸙]</a>ᴊᴏɪɴ ᴅᴀᴛᴇ ⌁ {join_date_formatted}
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʜᴀᴛ ɪᴅ ⌁ <code>{user.id}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴜsᴇʀɴᴀᴍᴇ ⌁ <i>{username}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> ᴄʀᴇᴅɪᴛs ⌁ {credits}
+
 ↯ ᴜsᴇ ᴛʜᴇ ʙᴇʟᴏᴡ ʙᴢᴛᴛᴏɴs ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ"""
 
         # Create the original main menu buttons
@@ -2638,7 +2645,6 @@ Choose a payment gateway to check your cards"""
         except:
             pass
         bot.answer_callback_query(call.id, "Returned to main menu")
-
 
 # Run the bot
 if __name__ == "__main__":
