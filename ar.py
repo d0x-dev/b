@@ -16,7 +16,7 @@ def process_ar_card(cc):
             return {
                 "status": "ERROR",
                 "response": "Invalid format. Use: CC|MM|YY|CVV",
-                "gateway": "Cybersource"
+                "gateway": "Cybersource Authnet"
             }
         
         n, mm, yy, cvv = parts[0], parts[1], parts[2], parts[3]
@@ -90,7 +90,7 @@ def process_ar_card(cc):
             return {
                 "status": "APPROVED",
                 "response": "Payment Approved",
-                "gateway": "Cybersource"
+                "gateway": "Cybersource Authnet"
             }
         elif error_box:
             error_text = error_box.get_text(strip=True)
@@ -100,31 +100,31 @@ def process_ar_card(cc):
                 return {
                     "status": "APPROVED_OTP",
                     "response": "CVV Required/OTP",
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
             elif 'Insufficient funds' in error_text or 'funds' in error_text:
                 return {
                     "status": "APPROVED",
                     "response": "Insufficient Funds",
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
             elif 'Do not honor' in error_text:
                 return {
                     "status": "DECLINED",
                     "response": "Do Not Honor",
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
             elif 'Invalid' in error_text or 'declined' in error_text.lower():
                 return {
                     "status": "DECLINED",
                     "response": error_text[:100],  # Limit response length
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
             else:
                 return {
                     "status": "DECLINED",
                     "response": error_text[:100] if error_text else "Declined",
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
         else:
             # Check for other error indicators
@@ -134,7 +134,7 @@ def process_ar_card(cc):
                 return {
                     "status": "DECLINED",
                     "response": error_msg[:100],
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
             
             # If no specific elements found, check response text
@@ -142,30 +142,30 @@ def process_ar_card(cc):
                 return {
                     "status": "APPROVED",
                     "response": "Payment Successful",
-                    "gateway": "Cybersource"
+                    "gateway": "Cybersource Authnet"
                 }
             
             return {
                 "status": "DECLINED",
                 "response": "Unknown response from gateway",
-                "gateway": "Cybersource"
+                "gateway": "Cybersource Authnet"
             }
             
     except requests.Timeout:
         return {
             "status": "ERROR",
             "response": "Request timeout",
-            "gateway": "Cybersource"
+            "gateway": "Cybersource Authnet"
         }
     except requests.ConnectionError:
         return {
             "status": "ERROR",
             "response": "Connection error",
-            "gateway": "Cybersource"
+            "gateway": "Cybersource Authnet"
         }
     except Exception as e:
         return {
             "status": "ERROR",
             "response": f"Processing error: {str(e)}",
-            "gateway": "Cybersource"
+            "gateway": "Cybersource Authnet"
         }
