@@ -1804,7 +1804,7 @@ def handle_ar(message):
     bin_info = get_bin_info(bin_number) or {}
 
     # --- Step 4: Send "checking..." message ---
-    checking_msg = checking_status_format(cc, "Mifik Mission [AR]", bin_info)
+    checking_msg = checking_status_format(cc, "Cybersource Authnet", bin_info)
     status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
 
     # --- Step 5: Run AR check ---
@@ -1883,10 +1883,10 @@ def handle_mar(message):
             bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
             return
 
-        initial_msg = f"🚀 Starting mass Mifik Mission [AR] check of {len(cards)} cards..."
+        initial_msg = f"🚀 Starting mass Cybersource Authnet check of {len(cards)} cards..."
         status_message = bot.reply_to(message, initial_msg)
 
-        gateway = "Mifik Mission [AR]"
+        gateway = "Cybersource Authnet"
         start_time = time.time()
 
         def process_cards():
