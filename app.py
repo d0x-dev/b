@@ -34,6 +34,7 @@ from pp import process_card_pp
 from svb import process_card_svb
 from ar import process_ar_card
 from sr import process_card_sr
+from pf import process_pf_card
 #====================================================================#
 
 #==============================API===================================#
@@ -2720,6 +2721,201 @@ def handle_msr(message):
             for i, card in enumerate(cards, 1):
                 try:
                     result = process_card_sr(card)
+                    results.append({
+                        'card': card,
+                        'status': result['status'],
+                        'response': result['response'],
+                        'gateway': result.get('gateway', gateway)
+                    })
+
+                    # Send approved to group
+                    if result["status"].upper() in ["APPROVED", "APPROVED_OTP"]:
+                        send_to_group(
+                            cc=card,
+                            gateway=result["gateway"],
+                            response=result["response"],
+                            bin_info=get_bin_info(card.split('|')[0][:6]) or {},
+                            time_taken=round(time.time() - start_time, 2),
+                            user_info=message.from_user
+                        )
+
+                except Exception as e:
+                    results.append({
+                        'card': card,
+                        'status': 'ERROR',
+                        'response': f'Error: {str(e)}',
+                        'gateway': gateway
+                    })
+
+                current_time = time.time() - start_time
+                progress_msg = format_mass_check(results, len(cards), current_time, gateway, i)
+                bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
+                                      text=progress_msg, parse_mode='HTML')
+
+            final_time = time.time() - start_time
+            final_msg = format_mass_check(results, len(cards), final_time, gateway, len(cards))
+            bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
+                                  text=final_msg, parse_mode='HTML')
+
+        threading.Thread(target=process_cards).start()
+
+    except Exception as e:
+        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+
+# Handle /pf command
+@bot.message_handler(commands=['pf'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.pf'))
+def handle_pf(message):
+    # --- Helper: extract CC from messy text ---
+    def extract_cc(text: str):
+        if not text:
+            return None
+
+        # Normalize separators into "|"
+        cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())
+
+        # Pattern for CC + MM + YY/YYYY + CVV
+        match = re.search(r'(\d{12,19})\|?(\d{1,2})\|?(\d{2,4})\|?(\d{3,4})', cleaned)
+        if match:
+            cc, mm, yy, cvv = match.groups()
+
+            # Fix year (if 4 digits → convert to last 2)
+            if len(yy) == 4:
+                yy = yy[-2:]
+
+            # Ensure 2-digit month
+            mm = mm.zfill(2)
+
+            return f"{cc}|{mm}|{yy}|{cvv}"
+
+        return None
+
+    # --- User credit system ---
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+    if not use_credits(user_id):
+        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+        return
+
+    # --- Step 1: Get raw text (after command or from reply) ---
+    command_parts = message.text.split(maxsplit=1)
+    raw_input = None
+
+    if len(command_parts) > 1:
+        raw_input = command_parts[1]
+    elif message.reply_to_message:  
+        if message.reply_to_message.text:
+            raw_input = message.reply_to_message.text
+        elif message.reply_to_message.caption:
+            raw_input = message.reply_to_message.caption
+
+    if not raw_input:
+        bot.reply_to(message, "❌ Please provide CC details or reply to a message containing them.")
+        return
+
+    # --- Step 2: Extract CC ---
+    cc = extract_cc(raw_input)
+    if not cc:
+        bot.reply_to(message, "❌ No valid CC found. Use format: CC|MM|YY|CVV")
+        return
+
+    # --- Step 3: BIN lookup + user mention ---
+    user_status = get_user_status(message.from_user.id)
+    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
+    bin_number = cc.split('|')[0][:6]
+    bin_info = get_bin_info(bin_number) or {}
+
+    # --- Step 4: Send "checking..." message ---
+    checking_msg = checking_status_format(cc, "Payflow [0.98$]", bin_info)
+    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
+
+    # --- Step 5: Run PF check ---
+    start_time = time.time()
+    check_result = process_pf_card(cc)  # This calls the function from pf.py
+    end_time = time.time()
+    time_taken = round(end_time - start_time, 2)
+
+    # --- Step 6: If approved → send to group ---
+    if check_result["status"].upper() in ["APPROVED", "APPROVED_OTP"]:
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
+        )
+
+    # --- Step 7: Final response ---
+    response_text = single_check_format(
+        cc=cc,
+        gateway=check_result["gateway"],
+        response=check_result["response"],
+        mention=mention,
+        Userstatus=user_status,
+        bin_info=bin_info,
+        time_taken=time_taken,
+        status=check_result["status"]
+    )
+
+    bot.edit_message_text(
+        chat_id=message.chat.id,
+        message_id=status_message.message_id,
+        text=response_text,
+        parse_mode='HTML'
+    )
+
+# Handle /mpf command
+@bot.message_handler(commands=['mpf'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mpf'))
+def handle_mpf(message):
+    user_id = message.from_user.id
+    init_user(user_id, message.from_user.username)
+
+    try:
+        cards_text = None
+        command_parts = message.text.split()
+
+        if len(command_parts) > 1:
+            cards_text = ' '.join(command_parts[1:])
+        elif message.reply_to_message:
+            cards_text = message.reply_to_message.text
+        else:
+            bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
+            return
+
+        # Extract cards
+        cards = []
+        for line in cards_text.split('\n'):
+            line = line.strip()
+            if line:
+                for card in line.split():
+                    if '|' in card:
+                        cards.append(card.strip())
+
+        if not cards:
+            bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
+            return
+
+        if len(cards) > MAX_MASS_CHECK:
+            cards = cards[:MAX_MASS_CHECK]
+            bot.reply_to(message, f"⚠️ Maximum {MAX_MASS_CHECK} cards allowed. Checking first {MAX_MASS_CHECK} cards only.")
+
+        if not use_credits(user_id, len(cards)):
+            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+            return
+
+        initial_msg = f"🚀 Starting mass Payflow [0.98$] check of {len(cards)} cards..."
+        status_message = bot.reply_to(message, initial_msg)
+
+        gateway = "Payflow [0.98$]"
+        start_time = time.time()
+
+        def process_cards():
+            results = []
+            for i, card in enumerate(cards, 1):
+                try:
+                    result = process_pf_card(card)
                     results.append({
                         'card': card,
                         'status': result['status'],
