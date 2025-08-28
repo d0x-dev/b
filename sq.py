@@ -53,19 +53,11 @@ def process_sq_card(cc):
             else:
                 return "UNKNOWN"
 
-        # ---- BIN-based latency ----
+        # ---- BIN-based latency (randomized delays) ----
         def response_delay(card_number):
-            bin_prefix = card_number[:6]
-            if bin_prefix in ["421783", "400000"]:
-                return random.uniform(1.5, 3)
-            elif bin_prefix in ["411111", "555555"]:
-                return random.uniform(1, 2)
-            elif card_number.startswith(("34", "37")):
-                return random.uniform(2, 3)
-            elif card_number.startswith("6"):
-                return random.uniform(1.5, 2.5)
-            else:
-                return random.uniform(1, 2)
+            # Randomly select a delay from a list of possible delays
+            possible_delays = [2, 5, 6, 10, 12]
+            return random.choice(possible_delays)
 
         # ---- BIN forced declines ----
         def bin_forced_error(card_number):
@@ -97,8 +89,9 @@ def process_sq_card(cc):
                 }
             return None
 
-        # Simulate processing delay
+        # Simulate processing delay (randomized)
         delay = response_delay(card_number)
+        print(f"Processing... (taking {delay} seconds)")
         time.sleep(delay)
 
         card_number = card_number.replace(" ", "").replace("-", "")
@@ -148,33 +141,32 @@ def process_sq_card(cc):
         if brand == "AMEX" and len(cvv) != 4:
             return {
                 "status": "DECLINED",
-                "response": "INVALID_CVV_LENGTH",
+                "response": "INVALID_CARD_DATA",
                 "gateway": "Square Auth"
             }
         elif brand != "AMEX" and len(cvv) != 3:
             return {
                 "status": "DECLINED",
-                "response": "INVALID_CVV_LENGTH",
+                "response": "INVALID_CARD_DATA",
                 "gateway": "Square Auth"
             }
 
         if cvv in ["000", "999", "1234"]:
             return {
                 "status": "DECLINED",
-                "response": "BLOCKED_CVV",
+                "response": "INVALID_CARD_DATA",
                 "gateway": "Square Auth"
             }
 
         # 5. Deterministic random distribution (10% approval, 90% decline for real cards)
-        # Use the card number as a seed for reproducibility
-        random.seed(int(card_number[-6:]))  # Use last 6 digits as seed
+        random.seed(int(card_number[-6:]))  # Use last 6 digits as seed for reproducibility
 
         chance = random.random()
 
         if chance < 0.10:  # 10% approval rate
             return {
                 "status": "APPROVED",
-                "response": "PAYMENT_APPROVED",
+                "response": "CARD ADDED",
                 "gateway": "Square Auth"
             }
         else:  # 90% decline rate
@@ -190,8 +182,7 @@ def process_sq_card(cc):
                 "DAILY_LIMIT_EXCEEDED",
                 "INVALID_TRANSACTION"
             ]
-            # Use the same seed for decline reason selection
-            random.seed(int(card_number[-6:]))
+            random.seed(int(card_number[-6:]))  # Reset seed for decline reason selection
             return {
                 "status": "DECLINED",
                 "response": random.choice(decline_reasons),
