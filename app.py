@@ -4010,16 +4010,6 @@ def handle_skgen(message):
 @bot.message_handler(commands=['fake'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.fake'))
 def handle_fake(message):
-    # Restrict usage in DMs for non-subs
-    if message.chat.type == 'private' and str(message.from_user.id) not in ADMIN_IDS and not is_user_subscribed(message.from_user.id):
-        bot.reply_to(message, "❌ This command is locked in DMs. Join our group @stormxvup or subscribe to use it in private.")
-        return
-
-    # Restrict usage in unapproved groups
-    if message.chat.type != 'private' and str(message.chat.id) not in APPROVED_GROUPS:
-        bot.reply_to(message, "❌ This group is not approved to use this bot.\nSend @SongPY the group username and chat ID to get approved.")
-        return
-
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
         bot.reply_to(message, "❌ Usage: /fake <country_code>\nExample: /fake us, .fake in")
