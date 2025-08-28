@@ -4016,6 +4016,7 @@ def handle_fake(message):
         return
 
     code = parts[1].strip().lower()
+    start_time = time.time()
 
     # Match locale or fallback to US
     matched_locale = None
@@ -4056,7 +4057,15 @@ def handle_fake(message):
 
         # PAN Number for Indian users
         pan_number = fake.bothify(text='?????####?').upper() if code == "in" else "N/A"
-
+        
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        
+        # Get user info
+        user_id = message.from_user.id
+        first_name = message.from_user.first_name
+        user_status = get_user_status(user_id)
+        
         msg = f"""
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 🔥 𝐅𝐚𝐤𝐞 𝐀𝐝𝐝𝐫𝐞𝐬𝐬</a>
@@ -4064,15 +4073,18 @@ def handle_fake(message):
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐍𝐚𝐦𝐞 ➳ <code>{name}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐫𝐞𝐞𝐭 ➳ <code>{street}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐝𝐝𝐫𝐞𝐬𝐬 𝟐 ➳ <code>{address2}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐞 ➳ <code>{state}</code> (<code>{state_abbr}</code>)
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐢𝐭𝐲 ➳ <code>{city}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ <code>{country}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐨𝐬𝐭𝐚𝐥 𝐂𝐨𝐝𝐞 ➳ <code>{zip_code}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐡𝐨𝐧𝐞 ➳ <code>{phone}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐦𝐚𝐢𝐥 ➳ <code>{email}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐎𝐁 ➳ <code>{dob}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐈𝐏 ➳ <code>{ip}</code>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ➳ <code>{processing_time} seconds</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ➳ <a href='tg://user?id={user_id}'>{user_first_name}</a> [ {user_status} ]
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ➳ <code>{execution_time:0.2f} seconds</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ➳ <a href='tg://user?id={user_id}'>{first_name}</a> [ {user_status} ]
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ➳ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲  
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 """
@@ -4080,6 +4092,7 @@ def handle_fake(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ Error generating identity: {str(e)}")
+
 # Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.gen'))
