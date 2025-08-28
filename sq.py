@@ -54,7 +54,7 @@ def process_sq_card(cc):
                 return "UNKNOWN"
 
         # ---- BIN-based latency (randomized delays) ----
-        def response_delay(card_number):
+        def response_delay():
             # Randomly select a delay from a list of possible delays
             possible_delays = [2, 5, 6, 10, 12]
             return random.choice(possible_delays)
@@ -90,7 +90,7 @@ def process_sq_card(cc):
             return None
 
         # Simulate processing delay (randomized)
-        delay = response_delay(card_number)
+        delay = response_delay()
         print(f"Processing... (taking {delay} seconds)")
         time.sleep(delay)
 
