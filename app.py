@@ -4058,8 +4058,8 @@ def handle_fake(message):
         # Start timer
         start_time = time.time()
         
-        # Fetch random user data
-        api_url = f"https://randomuser.me/api/?nat={country_code.lower()}&inc=name,location,phone,email&noinfo"
+        # Fetch random user data with correct API parameters
+        api_url = f"https://randomuser.me/api/?nat={country_code.lower()}&inc=name,location,phone&noinfo"
         response = requests.get(api_url, timeout=10)
         
         if response.status_code != 200:
@@ -4069,25 +4069,50 @@ def handle_fake(message):
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>Failed to fetch data from API</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>API Error</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>API Error {response.status_code}</code>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 """, parse_mode='HTML')
             return
 
         data = response.json()
+        
+        # Check if results exist
+        if "results" not in data or len(data["results"]) == 0:
+            bot.reply_to(message, """
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>No data returned from API</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐨𝐥𝐮𝐭𝐢𝐨𝐧 ➳ <i>Try a different country code</i>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+""", parse_mode='HTML')
+            return
+            
         results = data["results"][0]
         
-        # Extract user information
-        nombre = results["name"]["first"]
-        last = results["name"]["last"]
-        loca = results["location"]["street"]["name"]
-        nm = results["location"]["street"]["number"]
-        city = results["location"]["city"]
-        state = results["location"]["state"]
-        country_name = results["location"]["country"]
-        postcode = results["location"]["postcode"]
-        phone = results["phone"]
-        email = results["email"]
+        # Extract user information with proper error handling
+        try:
+            nombre = results["name"]["first"]
+            last = results["name"]["last"]
+            loca = results["location"]["street"]["name"]
+            nm = results["location"]["street"]["number"]
+            city = results["location"]["city"]
+            state = results["location"]["state"]
+            country_name = results["location"]["country"]
+            postcode = str(results["location"]["postcode"])
+            phone = results["phone"]
+        except KeyError as e:
+            bot.reply_to(message, f"""
+<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
+<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
+<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>Missing data in API response</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ <code>{str(e)}</code>
+<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
+""", parse_mode='HTML')
+            return
         
         # Generate random email for inbox link
         randstr = ''.join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(6, 10)))
