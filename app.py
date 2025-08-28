@@ -4006,154 +4006,89 @@ def handle_skgen(message):
     # Start generation in a separate thread
     threading.Thread(target=generate_live_sk_keys).start()
 
-# Handle /fake command
 @bot.message_handler(commands=['fake'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.fake'))
 def handle_fake(message):
+    # Restrict usage in DMs for non-subs
+    if message.chat.type == 'private' and str(message.from_user.id) not in ADMIN_IDS and not is_user_subscribed(message.from_user.id):
+        bot.reply_to(message, "❌ This command is locked in DMs. Join our group @stormxvup or subscribe to use it in private.")
+        return
+
+    # Restrict usage in unapproved groups
+    if message.chat.type != 'private' and str(message.chat.id) not in APPROVED_GROUPS:
+        bot.reply_to(message, "❌ This group is not approved to use this bot.\nSend @SongPY the group username and chat ID to get approved.")
+        return
+
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        bot.reply_to(message, "❌ Usage: /fake <country_code>\nExample: /fake us, .fake in")
+        return
+
+    code = parts[1].strip().lower()
+
+    # Match locale or fallback to US
+    matched_locale = None
+    for locale in AVAILABLE_LOCALES:
+        if locale.lower().endswith(f"_{code}") or locale.lower() == code:
+            matched_locale = locale
+            break
+
+    if not matched_locale:
+        matched_locale = "en_US"
+        code = "us"
+
+    fake = Faker(matched_locale)
+
     try:
-        # Extract country code from message
-        command_parts = message.text.split()
-        if len(command_parts) < 2:
-            bot.reply_to(message, """
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
+        name = fake.name()
+        street = fake.street_address()
+        city = fake.city()
+        state = fake.state() if hasattr(fake, 'state') else "N/A"
+        state_abbr = fake.state_abbr() if hasattr(fake, 'state_abbr') else "N/A"
+        country = matched_locale.upper()
+        zip_code = fake.postcode() if hasattr(fake, 'postcode') else "N/A"
+        email = fake.email()
+        phone = fake.phone_number()
+        dob = fake.date_of_birth(minimum_age=18, maximum_age=60)
+        company = fake.company()
+        job = fake.job()
+        ssn = fake.ssn() if hasattr(fake, 'ssn') else fake.bothify(text='???-##-####')
+        ip = fake.ipv4()
+        username = fake.user_name()
+        password = fake.password(length=10, special_chars=True, digits=True, upper_case=True, lower_case=True)
+        website = fake.url()
+        address2 = fake.secondary_address() if hasattr(fake, 'secondary_address') else "N/A"
+        device = fake.android_platform_token()
+        user_agent = fake.user_agent()
+        national_id = fake.bothify(text='##??##?####')
+        cc_number = fake.credit_card_number()
 
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>Please provide a country code</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐱𝐚𝐦𝐩𝐥𝐞 ➳ <code>/fake US</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 ➳ <i>US, CA, MX, UK, FR, DE, ES, AU, etc.</i>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
-            return
+        # PAN Number for Indian users
+        pan_number = fake.bothify(text='?????####?').upper() if code == "in" else "N/A"
 
-        country_code = command_parts[1].upper()
-        
-        # Simple country code validation
-        valid_countries = ['US', 'CA', 'MX', 'UK', 'GB', 'FR', 'DE', 'ES', 'IT', 'AU', 'BR', 'IN', 'JP', 'CN', 'RU']
-        if country_code not in valid_countries:
-            bot.reply_to(message, f"""
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
-
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>Invalid country code: {country_code}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐕𝐚𝐥𝐢𝐝 ➳ <code>US, CA, MX, UK, FR, DE, ES, IT, AU, etc.</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐱𝐚𝐦𝐩𝐥𝐞 ➳ <code>/fake US</code>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
-            return
-
-        # Start timer
-        start_time = time.time()
-        
-        # Fetch random user data with the specific API format
-        api_url = f"https://randomuser.me/api/?nat={country_code.lower()}&inc=name,location,phone&exc=location.city&noinfo"
-        response = requests.get(api_url, timeout=10)
-        
-        if response.status_code != 200:
-            bot.reply_to(message, f"""
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
-
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>Failed to fetch data from API</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐮𝐬 ➳ <code>HTTP {response.status_code}</code>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
-            return
-
-        data = response.json()
-        
-        # Check if results exist
-        if "results" not in data or len(data["results"]) == 0:
-            bot.reply_to(message, """
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
-
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>No data returned from API</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐨𝐥𝐮𝐭𝐢𝐨𝐧 ➳ <i>Try a different country code</i>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
-            return
-            
-        results = data["results"][0]
-        
-        # Extract user information with proper error handling
-        try:
-            nombre = results["name"]["first"]
-            last = results["name"]["last"]
-            loca = results["location"]["street"]["name"]
-            nm = results["location"]["street"]["number"]
-            city = results["location"]["city"]
-            state = results["location"]["state"]
-            country_name = results["location"]["country"]
-            postcode = str(results["location"]["postcode"])
-            phone = results["phone"]
-        except KeyError as e:
-            bot.reply_to(message, f"""
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
-
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>Missing data in API response</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ <code>{str(e)}</code>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
-            return
-        
-        # Calculate processing time
-        end_time = time.time()
-        processing_time = round(end_time - start_time, 2)
-        
-        # Get user info
-        user_id = message.from_user.id
-        user_first_name = message.from_user.first_name
-        user_status = get_user_status(user_id)
-        
-        # Format the response
-        response_text = f"""
+        msg = f"""
 <a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
 <a href='https://t.me/stormxvup'>┃ 🔥 𝐅𝐚𝐤𝐞 𝐀𝐝𝐝𝐫𝐞𝐬𝐬</a>
 <a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
 
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐍𝐚𝐦𝐞 ➳ <code>{nombre} {last}</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐫𝐞𝐞𝐭 ➳ <code>{loca} {nm}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐍𝐚𝐦𝐞 ➳ <code>{name}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐫𝐞𝐞𝐭 ➳ <code>{street}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐞 ➳ <code>{state}</code> (<code>{state_abbr}</code>)
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐢𝐭𝐲 ➳ <code>{city}</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐭𝐚𝐭𝐞 ➳ <code>{state}</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ <code>{country_name}</code>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐨𝐬𝐭𝐚𝐥 𝐂𝐨𝐝𝐞 ➳ <code>{postcode}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ <code>{country}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐨𝐬𝐭𝐚𝐥 𝐂𝐨𝐝𝐞 ➳ <code>{zip_code}</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐏𝐡𝐨𝐧𝐞 ➳ <code>{phone}</code>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐦𝐚𝐢𝐥 ➳ <code>{email}</code>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ➳ <code>{processing_time} seconds</code>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ➳ <a href='tg://user?id={user_id}'>{user_first_name}</a> [ {user_status} ]
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ➳ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ➳ ⏤‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲  
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 """
+        bot.reply_to(message, msg.strip(), parse_mode="HTML")
 
-        bot.reply_to(message, response_text, parse_mode='HTML', disable_web_page_preview=True)
-
-    except requests.Timeout:
-        bot.reply_to(message, """
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
-
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>API request timeout</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐒𝐨𝐥𝐮𝐭𝐢𝐨𝐧 ➳ <i>Try again in a moment</i>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
     except Exception as e:
-        bot.reply_to(message, f"""
-<a href='https://t.me/stormxvup'>┏━━━━━━━⍟</a>
-<a href='https://t.me/stormxvup'>┃ ❌ 𝐄𝐫𝐫𝐨𝐫</a>
-<a href='https://t.me/stormxvup'>┗━━━━━━━━━━━⊛</a>
-
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐄𝐫𝐫𝐨𝐫 ➳ <i>An unexpected error occurred</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐭𝐚𝐢𝐥𝐬 ➳ <code>{str(e)[:100]}...</code>
-<a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-""", parse_mode='HTML')
-
+        bot.reply_to(message, f"❌ Error generating identity: {str(e)}")
 # Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.gen'))
