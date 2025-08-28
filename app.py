@@ -11,7 +11,8 @@ import concurrent.futures
 import re
 from datetime import datetime, timedelta
 import os
-import iso3166
+from faker import Faker
+from faker.config import AVAILABLE_LOCALES
 from urllib.parse import urlparse
 import psutil
 import platform
