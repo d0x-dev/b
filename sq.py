@@ -165,7 +165,10 @@ def process_sq_card(cc):
                 "gateway": "Square Auth"
             }
 
-        # 5. Random distribution (10% approval, 90% decline for real cards)
+        # 5. Deterministic random distribution (10% approval, 90% decline for real cards)
+        # Use the card number as a seed for reproducibility
+        random.seed(int(card_number[-6:]))  # Use last 6 digits as seed
+
         chance = random.random()
 
         if chance < 0.10:  # 10% approval rate
@@ -187,6 +190,8 @@ def process_sq_card(cc):
                 "DAILY_LIMIT_EXCEEDED",
                 "INVALID_TRANSACTION"
             ]
+            # Use the same seed for decline reason selection
+            random.seed(int(card_number[-6:]))
             return {
                 "status": "DECLINED",
                 "response": random.choice(decline_reasons),
