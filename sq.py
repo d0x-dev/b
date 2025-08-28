@@ -108,7 +108,12 @@ def process_sq_card(cc):
         if test_resp:
             return test_resp
 
-        # 2. Basic validation
+        # 2. Check for forced errors
+        forced = bin_forced_error(card_number)
+        if forced:
+            return forced
+
+        # 3. Basic validation
         if len(card_number) not in [14, 15, 16]:
             return {
                 "status": "DECLINED",
@@ -138,11 +143,6 @@ def process_sq_card(cc):
                 "gateway": "Square Auth"
             }
 
-        # 3. BIN sandbox declines
-        forced = bin_forced_error(card_number)
-        if forced:
-            return forced
-
         # 4. CVV check
         brand = detect_brand(card_number)
         if brand == "AMEX" and len(cvv) != 4:
@@ -165,34 +165,27 @@ def process_sq_card(cc):
                 "gateway": "Square Auth"
             }
 
-        # 5. Random distribution (simulate real approval/decline rates)
+        # 5. Random distribution (10% approval, 90% decline for real cards)
         chance = random.random()
 
-        if chance < 0.65:  # 65% approval rate
+        if chance < 0.10:  # 10% approval rate
             return {
                 "status": "APPROVED",
                 "response": "PAYMENT_APPROVED",
                 "gateway": "Square Auth"
             }
-        elif chance < 0.75:  # 10% OTP required
-            return {
-                "status": "APPROVED_OTP",
-                "response": "THREE_D_SECURE_REQUIRED",
-                "gateway": "Square Auth"
-            }
-        elif chance < 0.85:  # 10% insufficient funds
-            return {
-                "status": "DECLINED",
-                "response": "INSUFFICIENT_FUNDS",
-                "gateway": "Square Auth"
-            }
-        else:  # 15% various declines
+        else:  # 90% decline rate
             decline_reasons = [
                 "ISSUER_DECLINED",
+                "INSUFFICIENT_FUNDS",
                 "CVV_VERIFICATION_FAILED",
                 "ADDRESS_VERIFICATION_FAILED",
                 "TRANSACTION_NOT_PERMITTED",
-                "DO_NOT_HONOR"
+                "DO_NOT_HONOR",
+                "FRAUD_SUSPECTED",
+                "CARD_BLOCKED",
+                "DAILY_LIMIT_EXCEEDED",
+                "INVALID_TRANSACTION"
             ]
             return {
                 "status": "DECLINED",
@@ -212,4 +205,3 @@ def process_sq_card(cc):
             "response": f"PROCESSING_ERROR: {str(e)}",
             "gateway": "Square Auth"
         }
-
