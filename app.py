@@ -11,6 +11,7 @@ import concurrent.futures
 import re
 from datetime import datetime, timedelta
 import os
+import iso3166
 from urllib.parse import urlparse
 import psutil
 import platform
