@@ -6,7 +6,7 @@ from datetime import datetime
 def process_sq_card(cc):
     """
     Process credit card through Square Auth gateway
-    Returns: dict with status, response, and gateway
+    Returns: dict with status, response, gateway, and code (if applicable)
     """
     try:
         # Parse the card details
@@ -14,19 +14,19 @@ def process_sq_card(cc):
         if len(parts) < 4:
             return {
                 "status": "ERROR",
-                "response": "Invalid format. Use: CC|MM|YY|CVV",
+                "response": "INVALID_FORMAT",
                 "gateway": "Square Auth"
             }
-        
+
         card_number, mm, yy, cvv = parts[0], parts[1], parts[2], parts[3]
-        
+
         # Format year if needed
         if len(yy) == 2:
             yy = "20" + yy
-        
+
         exp_month = int(mm)
         exp_year = int(yy)
-        
+
         # ---- Helper: Luhn Algorithm ----
         def luhn_check(card_number: str) -> bool:
             total = 0
@@ -53,9 +53,6 @@ def process_sq_card(cc):
             else:
                 return "UNKNOWN"
 
-        def detect_funding(card_number):
-            return random.choice(["credit", "debit", "prepaid"])
-
         # ---- BIN-based latency ----
         def response_delay(card_number):
             bin_prefix = card_number[:6]
@@ -73,30 +70,30 @@ def process_sq_card(cc):
         # ---- BIN forced declines ----
         def bin_forced_error(card_number):
             if card_number.startswith("411111"):
-                return "INVALID_CARD", "Issuer declined card"
+                return {"status": "DECLINED", "response": "INVALID_CARD", "gateway": "Square Auth", "code": "INVALID_CARD"}
             elif card_number.startswith("400000"):
-                return "CARD_EXPIRED", "Test card expired"
+                return {"status": "DECLINED", "response": "CARD_EXPIRED", "gateway": "Square Auth", "code": "CARD_EXPIRED"}
             elif card_number.startswith("422222"):
-                return "CVV_FAILURE", "CVV did not match"
+                return {"status": "DECLINED", "response": "CVV_FAILURE", "gateway": "Square Auth", "code": "CVV_FAILURE"}
             elif card_number.startswith("433333"):
-                return "ADDRESS_VERIFICATION_FAILURE", "Postal code mismatch"
+                return {"status": "DECLINED", "response": "ADDRESS_VERIFICATION_FAILURE", "gateway": "Square Auth", "code": "ADDRESS_VERIFICATION_FAILURE"}
             elif card_number.startswith("444444"):
-                return "DUPLICATE_CARD", "Card already exists on file"
+                return {"status": "DECLINED", "response": "DUPLICATE_CARD", "gateway": "Square Auth", "code": "DUPLICATE_CARD"}
             elif card_number.startswith("499999"):
-                return "INTERNAL_SERVER_ERROR", "Temporary gateway error"
+                return {"status": "DECLINED", "response": "INTERNAL_SERVER_ERROR", "gateway": "Square Auth", "code": "INTERNAL_SERVER_ERROR"}
             return None
 
         # ---- Test card rule (Stripe/Square style) ----
         TEST_BINS = ["411111", "400000", "422222", "424242"]
+
         def check_test_card(card_number):
             prefix = card_number[:6]
             if prefix in TEST_BINS:
                 return {
-                    "errors": [{
-                        "code": "TEST_CARD_USED",
-                        "category": "INVALID_REQUEST",
-                        "detail": "Your transaction was in live mode but used a known test card number."
-                    }]
+                    "status": "DECLINED",
+                    "response": "TEST_CARD_USED",
+                    "gateway": "Square Auth",
+                    "code": "TEST_CARD_USED"
                 }
             return None
 
@@ -105,29 +102,24 @@ def process_sq_card(cc):
         time.sleep(delay)
 
         card_number = card_number.replace(" ", "").replace("-", "")
-        stored_cards = []
 
         # 1. Check known test cards
         test_resp = check_test_card(card_number)
         if test_resp:
-            return {
-                "status": "DECLINED",
-                "response": test_resp["errors"][0]["detail"],
-                "gateway": "Square Auth"
-            }
+            return test_resp
 
         # 2. Basic validation
         if len(card_number) not in [14, 15, 16]:
             return {
                 "status": "DECLINED",
-                "response": "Invalid card number length",
+                "response": "INVALID_CARD_LENGTH",
                 "gateway": "Square Auth"
             }
-        
+
         if not luhn_check(card_number):
             return {
                 "status": "DECLINED",
-                "response": "Invalid card number (Luhn check failed)",
+                "response": "INVALID_CARD_NUMBER",
                 "gateway": "Square Auth"
             }
 
@@ -135,77 +127,72 @@ def process_sq_card(cc):
         if exp_month < 1 or exp_month > 12:
             return {
                 "status": "DECLINED",
-                "response": "Invalid expiry month",
+                "response": "INVALID_EXPIRY_MONTH",
                 "gateway": "Square Auth"
             }
-        
+
         if exp_year < now.year or (exp_year == now.year and exp_month < now.month):
             return {
                 "status": "DECLINED",
-                "response": "Card has expired",
+                "response": "CARD_EXPIRED",
                 "gateway": "Square Auth"
             }
 
         # 3. BIN sandbox declines
         forced = bin_forced_error(card_number)
         if forced:
-            code, detail = forced
-            return {
-                "status": "DECLINED",
-                "response": detail,
-                "gateway": "Square Auth"
-            }
+            return forced
 
         # 4. CVV check
         brand = detect_brand(card_number)
         if brand == "AMEX" and len(cvv) != 4:
             return {
                 "status": "DECLINED",
-                "response": "Amex CVV must be 4 digits",
+                "response": "INVALID_CVV_LENGTH",
                 "gateway": "Square Auth"
             }
         elif brand != "AMEX" and len(cvv) != 3:
             return {
                 "status": "DECLINED",
-                "response": "CVV must be 3 digits",
+                "response": "INVALID_CVV_LENGTH",
                 "gateway": "Square Auth"
             }
-        
+
         if cvv in ["000", "999", "1234"]:
             return {
                 "status": "DECLINED",
-                "response": "Blocked CVV code",
+                "response": "BLOCKED_CVV",
                 "gateway": "Square Auth"
             }
 
         # 5. Random distribution (simulate real approval/decline rates)
         chance = random.random()
-        
+
         if chance < 0.65:  # 65% approval rate
             return {
                 "status": "APPROVED",
-                "response": "Payment Approved",
+                "response": "PAYMENT_APPROVED",
                 "gateway": "Square Auth"
             }
         elif chance < 0.75:  # 10% OTP required
             return {
                 "status": "APPROVED_OTP",
-                "response": "3D Secure Required",
+                "response": "THREE_D_SECURE_REQUIRED",
                 "gateway": "Square Auth"
             }
         elif chance < 0.85:  # 10% insufficient funds
             return {
-                "status": "APPROVED",
-                "response": "Insufficient Funds",
+                "status": "DECLINED",
+                "response": "INSUFFICIENT_FUNDS",
                 "gateway": "Square Auth"
             }
         else:  # 15% various declines
             decline_reasons = [
-                "Issuer declined transaction",
-                "CVV verification failed",
-                "Address verification failed",
-                "Transaction not permitted",
-                "Do not honor"
+                "ISSUER_DECLINED",
+                "CVV_VERIFICATION_FAILED",
+                "ADDRESS_VERIFICATION_FAILED",
+                "TRANSACTION_NOT_PERMITTED",
+                "DO_NOT_HONOR"
             ]
             return {
                 "status": "DECLINED",
@@ -216,12 +203,13 @@ def process_sq_card(cc):
     except ValueError:
         return {
             "status": "ERROR",
-            "response": "Invalid card format. Use: CC|MM|YY|CVV",
+            "response": "INVALID_FORMAT",
             "gateway": "Square Auth"
         }
     except Exception as e:
         return {
             "status": "ERROR",
-            "response": f"Processing error: {str(e)}",
+            "response": f"PROCESSING_ERROR: {str(e)}",
             "gateway": "Square Auth"
         }
+
