@@ -171,16 +171,7 @@ def process_sq_card(cc):
             }
         else:  # 90% decline rate
             decline_reasons = [
-                "ISSUER_DECLINED",
-                "INSUFFICIENT_FUNDS",
-                "CVV_VERIFICATION_FAILED",
-                "ADDRESS_VERIFICATION_FAILED",
-                "TRANSACTION_NOT_PERMITTED",
-                "DO_NOT_HONOR",
-                "FRAUD_SUSPECTED",
-                "CARD_BLOCKED",
-                "DAILY_LIMIT_EXCEEDED",
-                "INVALID_TRANSACTION"
+                "INVALID_CARD_DATA"
             ]
             random.seed(int(card_number[-6:]))  # Reset seed for decline reason selection
             return {
