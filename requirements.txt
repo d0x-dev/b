@@ -9,3 +9,4 @@ stripe
 googlesearch-python
 beautifulsoup4
 faker
+httpx
