@@ -336,7 +336,7 @@ def process_card_b3(cc):
         if "Payment method successfully added." in result:
             return {
                 "status": "APPROVED",
-                "response": "Payment method successfully added.",
+                "response": "Approved",
                 "gateway": "Braintree Auth"
             }
         else:
