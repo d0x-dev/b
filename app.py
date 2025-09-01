@@ -48,7 +48,7 @@ CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count=
 
 #==========================BOT=======================================#
 # Bot token
-BOT_TOKEN = "8398297374:AAE-bhGRfTu5CHsF6dgrR3rzglWQ2N4KmaI"
+BOT_TOKEN = "8398297374:AAEupapcUsEr89_2GzvqbLZVcxuVYB9fOPA"
 bot = telebot.TeleBot(BOT_TOKEN)
 #=====================================================================#
 
