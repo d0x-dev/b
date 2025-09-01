@@ -1387,7 +1387,7 @@ def handle_mqq(message):
         command_parts = message.text.split()
 
         if len(command_parts) > 1:
-            cards_text = ' '.join(command_parts[1:)
+            cards_text = ' '.join(command_parts[1:])
         elif message.reply_to_message:
             cards_text = message.reply_to_message.text
         else:
