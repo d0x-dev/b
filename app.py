@@ -273,25 +273,27 @@ status_text = {
 }
 
 # Get BIN info
-# Get BIN info
 def get_bin_info(bin_number):
     try:
-        url = f"https://bins.antipublic.cc/bins/{bin_number}"
-        response = requests.get(url, timeout=2)
+        url = f"https://binlist.io/lookup/{bin_number}"
+        response = requests.get(url, timeout=5)
+        
         if response.status_code == 200:
             data = response.json()
+
             return {
-                'bin': data.get('bin', ''),
-                'brand': data.get('brand', 'None'),
-                'country': data.get('country_name', 'None'),
-                'country_flag': data.get('country_flag', ''),
-                'bank': data.get('bank', 'None'),
+                'bin': data.get('number', {}).get('iin', ''),
+                'brand': data.get('scheme', 'None'),
+                'country': data.get('country', {}).get('name', 'None'),
+                'country_flag': data.get('country', {}).get('emoji', ''),
+                'bank': data.get('bank', {}).get('name', 'None'),
                 'type': data.get('type', 'None'),
-                'level': data.get('level', 'None')
+                'level': data.get('category', 'None')
             }
         return None
-    except:
+    except Exception:
         return None
+
 
 def send_to_group(cc, gateway, response, bin_info, time_taken, user_info):
     user_status = get_user_status(user_info.id)
