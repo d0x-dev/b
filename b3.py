@@ -46,8 +46,8 @@ def process_card_b3(fullz):
         cc, mes, ano, cvv = fullz.split("|")
 
         accounts = [
-            ("becaf11944@besaies.com", "Darkboy336@1234")
-            ("soxel63632@skateru.com", "Darkboy336@1234"),
+            ("becaf11944@besaies.com", "Darkboy336@1234"),
+            ("soxel63632@skateru.com", "Darkboy336@1234")
         ]
 
         username, password = random.choice(accounts)
