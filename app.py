@@ -273,18 +273,19 @@ status_text = {
 }
 
 # Get BIN info
+# Get BIN info
 def get_bin_info(bin_number):
     try:
-        url = f"https://binsapi.vercel.app/api/bin?bin={bin_number}"
+        url = f"https://bins.antipublic.cc/bins/{bin_number}"
         response = requests.get(url, timeout=2)
         if response.status_code == 200:
             data = response.json()
             return {
-                'bin': data.get('number', ''),
-                'brand': data.get('vendor', 'None'),
-                'country': data.get('country', 'None'),
-                'country_flag': data.get('flag', ''),
-                'bank': data.get('bank_name', 'None'),
+                'bin': data.get('bin', ''),
+                'brand': data.get('brand', 'None'),
+                'country': data.get('country_name', 'None'),
+                'country_flag': data.get('country_flag', ''),
+                'bank': data.get('bank', 'None'),
                 'type': data.get('type', 'None'),
                 'level': data.get('level', 'None')
             }
