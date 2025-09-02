@@ -289,3 +289,37 @@ def process_pf_card(cc):
             "status": "ERROR",
             "response": f"Processing error: {str(e)}",
             "gateway": "Payflow [0.98$]"
+        }
+
+if __name__ == "__main__":
+    print("Payflow Gateway Tester [0.98$]")
+    print("=" * 40)
+    print("Format: CC|MM|YY|CVV")
+    print("Example: 4600750000973145|9|34|651")
+    print("=" * 40)
+    
+    while True:
+        try:
+            card_input = input("\nEnter card details (or 'quit' to exit): ").strip()
+            
+            if card_input.lower() in ['quit', 'exit', 'q']:
+                print("Exiting...")
+                break
+            
+            if not card_input:
+                continue
+                
+            print(f"\nProcessing: {card_input}")
+            print("-" * 30)
+            
+            result = process_pf_card(card_input)
+            
+            print(f"Status: {result['status']}")
+            print(f"Response: {result['response']}")
+            print(f"Gateway: {result['gateway']}")
+            
+        except KeyboardInterrupt:
+            print("\n\nExiting...")
+            break
+        except Exception as e:
+            print(f"Error: {e}")
