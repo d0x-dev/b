@@ -25,96 +25,21 @@ import stripe
 #====================================================================#
 
 #====================Gateway Files===================================#
-# Make sure these files exist in the same directory
-try:
-    from chk import check_card
-except ImportError:
-    def check_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Stripe Auth"}
-
-try:
-    from au import process_card_au
-except ImportError:
-    def process_card_au(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Stripe Auth 2"}
-
-try:
-    from at import process_card_at
-except ImportError:
-    def process_card_at(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Authnet"}
-
-try:
-    from vbv import check_vbv_card
-except ImportError:
-    def check_vbv_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "3DS Lookup"}
-
-try:
-    from py import check_paypal_card
-except ImportError:
-    def check_paypal_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "PayPal"}
-
-try:
-    from qq import check_qq_card
-except ImportError:
-    def check_qq_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Square"}
-
-try:
-    from cc import process_cc_card
-except ImportError:
-    def process_cc_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Site Based"}
-
-try:
-    from pp import process_card_pp
-except ImportError:
-    def process_card_pp(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "PayPal"}
-
-try:
-    from svb import process_card_svb
-except ImportError:
-    def process_card_svb(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Secure VBV"}
-
-try:
-    from ar import process_ar_card
-except ImportError:
-    def process_ar_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Cybersource Authnet"}
-
-try:
-    from sr import process_card_sr
-except ImportError:
-    def process_card_sr(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Stripe Auth 3"}
-
-try:
-    from pf import process_pf_card
-except ImportError:
-    def process_pf_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Payflow"}
-
-try:
-    from sq import process_sq_card
-except ImportError:
-    def process_sq_card(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Square Auth"}
-
-try:
-    from sp import process_card_sp
-except ImportError:
-    def process_card_sp(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Stripe Premium Auth"}
-
-try:
-    from b3 import process_card_b3
-except ImportError:
-    def process_card_b3(cc):
-        return {"status": "ERROR", "response": "Gateway not available", "gateway": "Braintree Auth"}
+from chk import check_card
+from au import process_card_au
+from at import process_card_at
+from vbv import check_vbv_card
+from py import check_paypal_card
+from qq import check_qq_card
+from cc import process_cc_card
+from pp import process_card_pp
+from svb import process_card_svb
+from ar import process_ar_card
+from sr import process_card_sr
+from pf import process_pf_card
+from sq import process_sq_card
+from sp import process_card_sp
+from b3 import process_card_b3
 #====================================================================#
 
 #==============================API===================================#
@@ -123,7 +48,7 @@ CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count=
 
 #==========================BOT=======================================#
 # Bot token
-BOT_TOKEN = "8398297374:AAGqxiZFM6giXb64gaJ0S8vDv0y17AY9BHY"
+BOT_TOKEN = "8398297374:AAE-bhGRfTu5CHsF6dgrR3rzglWQ2N4KmaI"
 bot = telebot.TeleBot(BOT_TOKEN)
 #=====================================================================#
 
@@ -179,7 +104,7 @@ def init_user(user_id, username=None):
         }
         save_users(users)
 
-# Save user function
+# Save user function (missing from original code)
 def save_user(user_id, username=None):
     users = load_users()
     if str(user_id) not in users:
@@ -255,7 +180,7 @@ def save_user_sites():
     with open(USER_SITES_FILE, 'w') as f:
         json.dump(USER_SITES, f)
 
-# Status texts and emojis
+# Status texts and emojis (add with other status constants)
 status_emoji = {
     'APPROVED': '🔥',
     'APPROVED_OTP': '❎',
@@ -275,25 +200,22 @@ status_text = {
 # Get BIN info
 def get_bin_info(bin_number):
     try:
-        url = f"https://binlist.io/lookup/{bin_number}"
-        response = requests.get(url, timeout=5)
-        
+        url = f"https://bins.antipublic.cc/bins/{bin_number}"
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             data = response.json()
-
             return {
-                'bin': data.get('number', {}).get('iin', ''),
-                'brand': data.get('scheme', 'None'),
-                'country': data.get('country', {}).get('name', 'None'),
-                'country_flag': data.get('country', {}).get('emoji', ''),
-                'bank': data.get('bank', {}).get('name', 'None'),
+                'bin': data.get('bin', ''),
+                'brand': data.get('brand', 'None'),
+                'country': data.get('country_name', 'None'),
+                'country_flag': data.get('country_flag', ''),
+                'bank': data.get('bank', 'None'),
                 'type': data.get('type', 'None'),
-                'level': data.get('category', 'None')
+                'level': data.get('level', 'None')
             }
         return None
-    except Exception:
+    except:
         return None
-
 
 def send_to_group(cc, gateway, response, bin_info, time_taken, user_info):
     user_status = get_user_status(user_info.id)
@@ -340,7 +262,6 @@ def send_to_group(cc, gateway, response, bin_info, time_taken, user_info):
             pass
             
         return False
-
 # Format for checking status
 def checking_status_format(cc, gateway, bin_info):
     parts = cc.split('|')
@@ -355,7 +276,7 @@ def checking_status_format(cc, gateway, bin_info):
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>Processing</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐢𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ➳ {bin_info.get('brand', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ➳ {bin_info.get('bank', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ➳ {bin_info.get('country', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>"""
@@ -401,7 +322,7 @@ def declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞 ⌁ <i>{response}</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐫𝐚𝐧𝐝 ⌁ {bin_info.get('brand', 'UNKNOWN')}
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐢𝐧𝐤 ⌁ {bin_info.get('bank', 'UNKNOWN')}
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐁𝐚𝐧𝐤 ⌁ {bin_info.get('bank', 'UNKNOWN')}
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {bin_info.get('country', 'UNKNOWN')} {bin_info.get('country_flag', '')}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {mention} [ {Userstatus} ]
@@ -411,7 +332,7 @@ def declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, 
 
 # Single check format function
 def single_check_format(cc, gateway, response, mention, Userstatus, bin_info, time_taken, status):
-    if status.upper() in ["APPROVED", "APPROVED_OTP"]:
+    if status.upper() == "APPROVED":
         return approved_check_format(cc, gateway, response, mention, Userstatus, bin_info, time_taken)
     else:
         return declined_check_format(cc, gateway, response, mention, Userstatus, bin_info, time_taken)
@@ -442,7 +363,7 @@ STATUS_EMOJIS = {
 }
 
 def format_mass_check(results, total_cards, processing_time, gateway, checked=0):
-    approved = sum(1 for r in results if r['status'].upper() in ['APPROVED', 'APPROVED_OTP'])
+    approved = sum(1 for r in results if r['status'].upper() in ['APPROVED', 'APPROVED'])
     ccn = sum(1 for r in results if r['status'].upper() == 'CCN')
     declined = sum(1 for r in results if r['status'].upper() in ['DECLINED', 'DECLINED'])
     errors = sum(1 for r in results if r['status'].upper() in ['ERROR', 'ERROR'])
@@ -453,7 +374,7 @@ def format_mass_check(results, total_cards, processing_time, gateway, checked=0)
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 ⌁ <i>{gateway}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ⌁ <i>{approved}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐂𝐍 ⌁ <i>{ccn}</i>
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 ⌁ <i>{declined}</i>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐓𝐢𝐦𝐞 ⌁ <i>{processing_time:.2f} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬</i>
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 """
@@ -485,15 +406,25 @@ def format_mass_check_processing(total_cards, checked, gateway):
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>Processing cards...</a>"""
 
+
 #=======================================================GATES========================================================================#
 # Handle /chk command
 @bot.message_handler(commands=['chk'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.chk'))
 def handle_chk(message):
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
         """
         Extracts a credit card from messy/jumbled text in various formats
         and normalizes to CC|MM|YY|CVV.
+        Supported formats:
+        CC|MM|YY|CVV
+        CC:MM:YYYY:CVV
+        CC/MM/YYYY/CVV
+        CC.MM.YYYY.CVV
+        CC\MM\YYYY\CVV
+        CC|MM/YYYY|CVV
+        CCMMYYYYCVV
         """
         if not text:
             return None
@@ -517,7 +448,7 @@ def handle_chk(message):
 
         return None
 
-    # --- User credit system ---
+    # --- User credit system (already in your project) ---
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
     if not use_credits(user_id):
@@ -595,9 +526,22 @@ def handle_chk(message):
 
 # Handle /au command
 @bot.message_handler(commands=['au'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.au'))
 def handle_au(message):
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
+        """
+        Extracts a credit card from messy/jumbled text in various formats
+        and normalizes to CC|MM|YY|CVV.
+        Supported formats:
+        CC|MM|YY|CVV
+        CC:MM:YYYY:CVV
+        CC/MM/YYYY/CVV
+        CC.MM.YYYY.CVV
+        CC\MM\YYYY\CVV
+        CC|MM/YYYY|CVV
+        CCMMYYYYCVV
+        """
         if not text:
             return None
 
@@ -620,7 +564,7 @@ def handle_au(message):
 
         return None
 
-    # --- User credit system ---
+    # --- User credit system (already in your project) ---
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
     if not use_credits(user_id):
@@ -695,11 +639,30 @@ def handle_au(message):
         parse_mode='HTML'
     )
 
+
 # Handle /mass command
+import re
+import time
+import threading
+import concurrent.futures
+
 @bot.message_handler(commands=['mass'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mass'))
 def handle_mass(message):
     # --- Helper: extract CCs from messy text ---
     def extract_ccs(text: str):
+        """
+        Extracts all possible CCs from messy/jumbled text in various formats
+        and normalizes them to CC|MM|YY|CVV.
+        Supported:
+        CC|MM|YY|CVV
+        CC:MM:YYYY:CVV
+        CC/MM/YYYY/CVV
+        CC.MM.YYYY.CVV
+        CC\MM\YYYY\CVV
+        CC|MM/YYYY|CVV
+        CCMMYYYYCVV
+        """
         if not text:
             return []
 
@@ -840,6 +803,7 @@ def handle_mass(message):
 
 # Handle /mchk command
 @bot.message_handler(commands=['mchk'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mchk'))
 def handle_mchk(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -964,7 +928,12 @@ def handle_mchk(message):
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
 # Handle /vbv command
+# --------------------
+# SINGLE CHECK HANDLERS
+# --------------------
+
 @bot.message_handler(commands=['vbv'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.vbv'))
 def handle_vbv(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1023,8 +992,12 @@ def handle_vbv(message):
         parse_mode='HTML'
     )
 
-# Handle /py command
+
+# Repeat same structure for py, qq, cc single checks
+# Just change the check function and gateway string
+
 @bot.message_handler(commands=['py'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.py'))
 def handle_py(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1082,8 +1055,10 @@ def handle_py(message):
         parse_mode='HTML'
     )
 
-# Handle /qq command
+
+# Same for qq
 @bot.message_handler(commands=['qq'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.qq'))
 def handle_qq(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1141,8 +1116,10 @@ def handle_qq(message):
         parse_mode='HTML'
     )
 
-# Handle /cc command
+
+# Same for cc
 @bot.message_handler(commands=['cc'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.cc'))
 def handle_cc(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1200,8 +1177,14 @@ def handle_cc(message):
         parse_mode='HTML'
     )
 
-# Handle /mvbv command
+
+# --------------------
+# MASS CHECK HANDLERS
+# --------------------
+
+# mvbv mass VBV check
 @bot.message_handler(commands=['mvbv'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mvbv'))
 def handle_mvbv(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1290,8 +1273,10 @@ def handle_mvbv(message):
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
-# Handle /mpy command
+
+# mpy mass PayPal check
 @bot.message_handler(commands=['mpy'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mpy'))
 def handle_mpy(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1378,9 +1363,9 @@ def handle_mpy(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
-
 # Handle /mqq command
 @bot.message_handler(commands=['mqq'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mqq'))
 def handle_mqq(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1486,6 +1471,7 @@ def handle_mqq(message):
 
 # Handle /mcc command
 @bot.message_handler(commands=['mcc'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mcc'))
 def handle_mcc(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1589,8 +1575,12 @@ def handle_mcc(message):
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
-# Handle /at command
+
+# --------------------
+# SINGLE AT CHECK
+# --------------------
 @bot.message_handler(commands=['at'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.at'))
 def handle_at(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1644,8 +1634,10 @@ def handle_at(message):
     bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
                           text=response_text, parse_mode='HTML')
 
+
 # Handle /mat command
 @bot.message_handler(commands=['mat'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mat'))
 def handle_mat(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1757,6 +1749,7 @@ def handle_mat(message):
 
 # Handle /ar command
 @bot.message_handler(commands=['ar'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.ar'))
 def handle_ar(message):
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
@@ -1859,6 +1852,7 @@ def handle_ar(message):
 
 # Handle /mar command
 @bot.message_handler(commands=['mar'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.mar'))
 def handle_mar(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
@@ -1947,7 +1941,7 @@ def handle_mar(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
-        
+
 def test_shopify_site(url):
     """Test if a Shopify site is reachable and working with a test card"""
     try:
@@ -5521,3 +5515,6 @@ def handle_id(message):
 if __name__ == "__main__":
     print("Bot is running...")
     bot.infinity_polling()
+
+
+give me fully working code back
