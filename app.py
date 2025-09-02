@@ -1072,7 +1072,6 @@ def handle_py(message):
 
 import re
 
-# Same for qq
 @bot.message_handler(commands=['qq'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.qq'))
 def handle_qq(message):
@@ -1082,26 +1081,31 @@ def handle_qq(message):
         bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
         return
 
-    cc = None
-
-    # Case 1: If replying to another message → try to extract CC
+    # Check if this is a reply to another message
     if message.reply_to_message and message.reply_to_message.text:
-        match = re.search(r'(\d{12,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})', message.reply_to_message.text)
-        if match:
-            cc = match.group(0)
+        # Extract CC from the replied-to message
+        cc_text = extract_cc_from_text(message.reply_to_message.text)
+        if cc_text:
+            process_qq_check(message, cc_text)
+            return
+    
+    # Extract CC from the command itself
+    command_text = message.text
+    # Remove the command part (/qq or .qq)
+    if command_text.startswith('/qq'):
+        command_text = command_text[3:].strip()
+    elif command_text.startswith('.qq'):
+        command_text = command_text[3:].strip()
+    
+    # Try to extract CC from the remaining text
+    cc_text = extract_cc_from_text(command_text)
+    if cc_text:
+        process_qq_check(message, cc_text)
+    else:
+        bot.reply_to(message, "⚠️ Please provide CC details in format:\n<code>CC|MM|YY|CVV</code> or reply to a message containing CC details", parse_mode="HTML")
 
-    # Case 2: Extract CC from anywhere in the command text
-    if not cc:
-        match = re.search(r'(\d{12,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})', message.text)
-        if match:
-            cc = match.group(0)
-
-    # No CC found → show usage help
-    if not cc:
-        bot.reply_to(message, "⚠️ Please provide CC details in format:\n<code>CC|MM|YY|CVV</code>", parse_mode="HTML")
-        return
-
-    # Process the CC
+def process_qq_check(message, cc):
+    user_id = message.from_user.id
     user_status = get_user_status(user_id)
     mention = f"<a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>"
     bin_number = cc.split('|')[0][:6]
@@ -1142,7 +1146,6 @@ def handle_qq(message):
         text=response_text,
         parse_mode='HTML'
     )
-
 
 import re
 
@@ -2409,83 +2412,100 @@ def handle_sh(message):
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {str(e)}")
 
-# Handle /pp command
+import re
+
 @bot.message_handler(commands=['pp'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.pp'))
 def handle_pp(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
+    if not use_credits(user_id):
+        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+        return
 
-    try:
-        cc = None
-        command_parts = message.text.split()
-
-        # Get card from command or reply
-        if len(command_parts) > 1:
-            cc = command_parts[1].strip()
-        elif message.reply_to_message:
-            reply_text = message.reply_to_message.text.strip()
-            if "|" in reply_text:
-                cc = reply_text
-        else:
-            bot.reply_to(message, "❌ Please provide CC details in format: CC|MM|YY|CVV or reply with the card.")
+    # Check if this is a reply to another message
+    if message.reply_to_message and message.reply_to_message.text:
+        # Extract CC from the replied-to message
+        cc_text = extract_cc_from_text(message.reply_to_message.text)
+        if cc_text:
+            process_cc_check(message, cc_text)
             return
+    
+    # Extract CC from the command itself
+    command_text = message.text
+    # Remove the command part (/pp or .pp)
+    if command_text.startswith('/pp'):
+        command_text = command_text[3:].strip()
+    elif command_text.startswith('.pp'):
+        command_text = command_text[3:].strip()
+    
+    # Try to extract CC from the remaining text
+    cc_text = extract_cc_from_text(command_text)
+    if cc_text:
+        process_cc_check(message, cc_text)
+    else:
+        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV or reply to a message containing CC details")
 
-        if not cc or '|' not in cc:
-            bot.reply_to(message, "❌ Invalid format. Use: CC|MM|YY|CVV")
-            return
+def extract_cc_from_text(text):
+    # Regular expression to match various CC formats
+    cc_patterns = [
+        r'(\d{13,19})[|\/\:\.\\\s]+(\d{1,2})[|\/\:\.\\\s]+(\d{2,4})[|\/\:\.\\\s]+(\d{3,4})',  # Standard formats
+        r'(\d{13,19})\s*[^\w\s]?\s*(\d{1,2})\s*[^\w\s]?\s*(\d{2,4})\s*[^\w\s]?\s*(\d{3,4})',  # With optional separators
+        r'(\d{4}\s?\d{4}\s?\d{4}\s?\d{4})\s+(\d{1,2})\D+(\d{2,4})\D+(\d{3,4})',  # Spaced CC numbers
+    ]
+    
+    for pattern in cc_patterns:
+        match = re.search(pattern, text)
+        if match:
+            cc = match.group(1).replace(" ", "")
+            mm = match.group(2)
+            yy = match.group(3)
+            cvv = match.group(4)
+            
+            # Format year to 2 digits if needed
+            if len(yy) == 4:
+                yy = yy[2:]
+            
+            return f"{cc}|{mm}|{yy}|{cvv}"
+    
+    return None
 
-        if not use_credits(user_id):
-            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
-            return
+def process_cc_check(message, cc):
+    user_id = message.from_user.id
+    user_status = get_user_status(user_id)
+    mention = f"<a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>"
+    bin_info = get_bin_info(cc.split('|')[0][:6]) or {}
 
-        # User info
-        user_status = get_user_status(user_id)
-        mention = f"<a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>"
-        bin_info = get_bin_info(cc.split('|')[0][:6]) or {}
+    status_message = bot.reply_to(message, checking_status_format(cc, "PayPal [2$]", bin_info), parse_mode='HTML')
+    start_time = time.time()
+    check_result = process_card_pp(cc)
+    time_taken = round(time.time() - start_time, 2)
 
-        # Initial status message
-        status_message = bot.reply_to(
-            message,
-            checking_status_format(cc, "PayPal [2$]", bin_info),
-            parse_mode='HTML'
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            bin_info=bin_info,
+            time_taken=time_taken,
+            user_info=message.from_user
         )
 
-        # Process the card
-        start_time = time.time()
-        check_result = process_card_pp(cc)
-        time_taken = round(time.time() - start_time, 2)
-
-        # Send approved hits to group
-        if check_result["status"].upper() == "APPROVED":
-            send_to_group(
-                cc=cc,
-                gateway=check_result["gateway"],
-                response=check_result["response"],
-                bin_info=bin_info,
-                time_taken=time_taken,
-                user_info=message.from_user
-            )
-
-        # Final edit with results
-        bot.edit_message_text(
-            chat_id=message.chat.id,
-            message_id=status_message.message_id,
-            text=single_check_format(
-                cc=cc,
-                gateway=check_result["gateway"],
-                response=check_result["response"],
-                mention=mention,
-                Userstatus=user_status,
-                bin_info=bin_info,
-                time_taken=time_taken,
-                status=check_result["status"]
-            ),
-            parse_mode='HTML'
-        )
-
-    except Exception as e:
-        bot.reply_to(message, f"❌ An error occurred: {str(e)}")
+    bot.edit_message_text(
+        chat_id=message.chat.id,
+        message_id=status_message.message_id,
+        text=single_check_format(
+            cc=cc,
+            gateway=check_result["gateway"],
+            response=check_result["response"],
+            mention=mention,
+            Userstatus=user_status,
+            bin_info=bin_info,
+            time_taken=time_taken,
+            status=check_result["status"]
+        ),
+        parse_mode='HTML'
+    )
 
 # 𝐦𝐩𝐩 𝐦𝐚𝐬𝐬 𝐏𝐚𝐲𝐏𝐚𝐥 𝐜𝐡𝐞𝐜𝐤
 @bot.message_handler(commands=['mpp'])
@@ -2602,30 +2622,37 @@ def handle_mpp(message):
 def handle_svb(message):
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
+    
+    if not use_credits(user_id):
+        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+        return
 
+    # Check if this is a reply to another message
+    if message.reply_to_message and message.reply_to_message.text:
+        # Extract CC from the replied-to message
+        cc_text = extract_cc_from_text(message.reply_to_message.text)
+        if cc_text:
+            process_svb_check(message, cc_text)
+            return
+    
+    # Extract CC from the command itself
+    command_text = message.text
+    # Remove the command part (/svb or .svb)
+    if command_text.startswith('/svb'):
+        command_text = command_text[4:].strip()
+    elif command_text.startswith('.svb'):
+        command_text = command_text[4:].strip()
+    
+    # Try to extract CC from the remaining text
+    cc_text = extract_cc_from_text(command_text)
+    if cc_text:
+        process_svb_check(message, cc_text)
+    else:
+        bot.reply_to(message, "Please provide CC details in format: CC|MM|YY|CVV or reply to a message containing CC details")
+
+def process_svb_check(message, cc):
     try:
-        cc = None
-        command_parts = message.text.split()
-
-        # Get card from command argument or reply message
-        if len(command_parts) > 1:
-            cc = command_parts[1].strip()
-        elif message.reply_to_message:
-            reply_text = message.reply_to_message.text.strip()
-            if "|" in reply_text:
-                cc = reply_text
-        else:
-            bot.reply_to(message, "❌ Please provide CC details in format: CC|MM|YY|CVV or reply with the card.")
-            return
-
-        if not cc or '|' not in cc:
-            bot.reply_to(message, "❌ Invalid format. Use: CC|MM|YY|CVV")
-            return
-
-        if not use_credits(user_id):
-            bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
-            return
-
+        user_id = message.from_user.id
         # User info
         user_status = get_user_status(user_id)
         mention = f"<a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>"
@@ -2674,7 +2701,7 @@ def handle_svb(message):
 
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
-
+        
 @bot.message_handler(commands=['msvb'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msvb'))
 def handle_msvb(message):
