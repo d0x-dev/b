@@ -5515,6 +5515,3 @@ def handle_id(message):
 if __name__ == "__main__":
     print("Bot is running...")
     bot.infinity_polling()
-
-
-give me fully working code back
