@@ -1,3 +1,4 @@
+
 #=============================IMPORTS==============================#
 import telebot
 import requests
@@ -2181,13 +2182,7 @@ def test_shopify_site(url):
         
         if response.status_code != 200:
             return False, "Site not reachable", "0.0", "shopify_payments", "No response"
-
-        user_id = message.from_user.id
-
-        if check_banned(user_id):
-            bot.reply_to(message, "❌ You are banned from using this bot.")
-            return
-            
+        
         response_text = response.text
         
         # Parse response
@@ -4110,19 +4105,19 @@ def handle_dork(message):
 ➤ Site → <code>{url}</code>
 
 🔍 Info:
-   └─𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀: {', '.join(gateways) if gateways else '❌'}
+   └─𝗚𝗮𝘁𝗲𝘄𝗮𝘆𝘀: {', '.join(gateways) if gateways else '❌'}
 
 🛡️ 𝗦𝗲𝗰𝘂𝗿𝗶𝘁𝘆:
-   ├─ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮: {status_icon(captcha)}
-   ├─ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲: {status_icon(cloudflare)}
-   ├─ 𝗚𝗿𝗮𝗽𝗵𝗤𝗟: {status_icon(graphql)}
-   ├─ Tokens Found:   {tokens}
-   └─ Payment JS Libs:{js_count} found
+   ├─ 𝗖𝗮𝗽𝘁𝗰𝗵𝗮: {status_icon(captcha)}
+   ├─ 𝗖𝗹𝗼𝘂𝗱𝗳𝗹𝗮𝗿𝗲: {status_icon(cloudflare)}
+   ├─ 𝗚𝗿𝗮𝗽𝗵𝗤𝗟: {status_icon(graphql)}
+   ├─ Tokens Found:   {tokens}
+   └─ Payment JS Libs:{js_count} found
 
 🛍️ 𝗣𝗹𝗮𝘁𝗳𝗼𝗿𝗺:
-   ├─ 𝗖𝗠𝗦: {cms}
-   ├─ 2𝗗/𝟯𝗗: {secure_type}
-   └─ 𝗖𝗮𝗿𝗱𝘀: {', '.join(card_hits) if card_hits else '❌'}
+   ├─ 𝗖𝗠𝗦: {cms}
+   ├─ 2𝗗/𝟯𝗗: {secure_type}
+   └─ 𝗖𝗮𝗿𝗱𝘀: {', '.join(card_hits) if card_hits else '❌'}
 ─────── ⸙ ────────
 """
 
@@ -5586,11 +5581,6 @@ def handle_start(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-    user_id = message.from_user.id
-
-    if check_banned(user_id):
-            bot.reply_to(message, "❌ You are banned from using this bot.")
-            return 
     user = call.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
