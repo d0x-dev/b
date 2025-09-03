@@ -5,7 +5,7 @@ import json
 import time
 import random
 import string
-from telebot.types import message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import threading
 import concurrent.futures
 import re
