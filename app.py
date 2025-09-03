@@ -5,7 +5,7 @@ import json
 import time
 import random
 import string
-from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from telebot.types import message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import threading
 import concurrent.futures
 import re
@@ -48,7 +48,7 @@ CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count=
 
 #==========================BOT=======================================#
 # Bot token
-BOT_TOKEN = "8398297374:AAGqxiZFM6giXb64gaJ0S8vDv0y17AY9BHY"
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '8398297374:AAH39nPTZW851uKxDfnCZFP7i3zR4wSdJ6g')
 bot = telebot.TeleBot(BOT_TOKEN)
 #=====================================================================#
 
@@ -118,7 +118,82 @@ def save_user(user_id, username=None):
         }
         save_users(users)
 
-# Reset credits for all users
+# Add these variables
+BANNED_USERS_FILE = "banned_users.json"
+flood_banned_users = {}  # {user_id: ban_time}
+
+# Load banned users
+def load_banned_users():
+    try:
+        with open(BANNED_USERS_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+# Save banned users
+def save_banned_users():
+    with open(BANNED_USERS_FILE, 'w') as f:
+        json.dump(banned_users, f)
+
+# Initialize
+banned_users = load_banned_users()
+
+# Ban command (owner only)
+@bot.message_handler(commands=['ban'])
+def handle_ban(message):
+    user_id = message.from_user.id
+    if user_id != OWNER_ID:
+        bot.reply_to(message, "❌ This command is only available for the owner.")
+        return
+    
+    try:
+        # Get user ID to ban
+        if message.reply_to_message:
+            target_id = message.reply_to_message.from_user.id
+        else:
+            parts = message.text.split()
+            if len(parts) < 2:
+                bot.reply_to(message, "❌ Usage: /ban [user_id] or reply to a user's message")
+                return
+            target_id = int(parts[1])
+        
+        # Ban the user
+        banned_users[str(target_id)] = True
+        save_banned_users()
+        bot.reply_to(message, f"✅ User {target_id} has been banned.")
+        
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {str(e)}")
+
+# Unban command
+@bot.message_handler(commands=['unban'])
+def handle_unban(message):
+    user_id = message.from_user.id
+    if user_id != OWNER_ID:
+        bot.reply_to(message, "❌ This command is only available for the owner.")
+        return
+    
+    try:
+        parts = message.text.split()
+        if len(parts) < 2:
+            bot.reply_to(message, "❌ Usage: /unban [user_id]")
+            return
+        
+        target_id = parts[1]
+        if target_id in banned_users:
+            del banned_users[target_id]
+            save_banned_users()
+            bot.reply_to(message, f"✅ User {target_id} has been unbanned.")
+        else:
+            bot.reply_to(message, f"❌ User {target_id} is not banned.")
+            
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {str(e)}")
+
+# Check if user is banned in all command handlers
+def check_banned(user_id):
+    return str(user_id) in banned_users
+
 def reset_credits():
     while True:
         users = load_users()
@@ -131,6 +206,40 @@ def reset_credits():
 
 # Start credit reset thread
 threading.Thread(target=reset_credits, daemon=True).start()
+
+# Add these imports at the top
+from collections import defaultdict
+import time
+
+# Add flood control variables
+user_last_command = defaultdict(float)
+FLOOD_WAIT_TIME = 2  # seconds between commands
+BAN_TIME = 300  # 5 minutes ban for flooding
+
+# Flood control decorator
+def flood_control(func):
+    def wrapper(message):
+        user_id = message.from_user.id
+        current_time = time.time()
+        
+        # Check if user is banned
+        if user_id in flood_banned_users:
+            if current_time - flood_banned_users[user_id] < BAN_TIME:
+                remaining = int(BAN_TIME - (current_time - flood_banned_users[user_id]))
+                bot.reply_to(message, f"❌ You are banned for {remaining} seconds due to flooding.")
+                return
+            else:
+                del flood_banned_users[user_id]
+        
+        # Check flood control
+        if current_time - user_last_command[user_id] < FLOOD_WAIT_TIME:
+            bot.reply_to(message, f"⚠️ Please wait {FLOOD_WAIT_TIME} seconds between commands.")
+            return
+        
+        user_last_command[user_id] = current_time
+        return func(message)
+    
+    return wrapper
 
 # Get user status
 def get_user_status(user_id):
@@ -407,10 +516,100 @@ def format_mass_check_processing(total_cards, checked, gateway):
 <a href='https://t.me/stormxvup'>Processing cards...</a>"""
 
 
+import re
+import time
+import concurrent.futures
+
+# --- Global helper: Extract a single CC ---
+def extract_cc(text: str):
+    if not text:
+        return None
+    cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())
+    match = re.search(r'(\d{12,19})\|?(\d{1,2})\|?(\d{2,4})\|?(\d{3,4})', cleaned)
+    if match:
+        cc, mm, yy, cvv = match.groups()
+        yy = yy[-2:] if len(yy) == 4 else yy
+        mm = mm.zfill(2)
+        return f"{cc}|{mm}|{yy}|{cvv}"
+    return None
+
+# --- Global helper: Extract multiple CCs ---
+def extract_ccs(text: str):
+    if not text:
+        return []
+    cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())
+    matches = re.findall(r'(\d{12,19})\|?(\d{1,2})\|?(\d{2,4})\|?(\d{3,4})', cleaned)
+    cards = []
+    for cc, mm, yy, cvv in matches:
+        yy = yy[-2:] if len(yy) == 4 else yy
+        mm = mm.zfill(2)
+        cards.append(f"{cc}|{mm}|{yy}|{cvv}")
+    return cards
+
+# --- Safe Gateway Wrapper ---
+def safe_gateway_check(cc, gateway_function):
+    try:
+        result = gateway_function(cc)
+        if 'site' in result.get('response', '').lower():
+            result['response'] = 'Gateway response received'
+        return result
+    except Exception:
+        return {'status': 'ERROR', 'response': 'Gateway temporarily unavailable', 'gateway': 'Unknown'}
+
+# --- /au Command Handler ---
+@bot.message_handler(commands=['au'])
+@bot.message_handler(func=lambda m: m.text and m.text.startswith('.au'))
+def handle_au(message):
+    user_id = message.from_user.id
+    if check_banned(user_id):
+        return bot.reply_to(message, "❌ You are banned from using this bot.")
+    init_user(user_id, message.from_user.username)
+    if not use_credits(user_id):
+        return bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+
+    # Get raw input
+    command_parts = message.text.split(maxsplit=1)
+    raw_input = command_parts[1] if len(command_parts) > 1 else None
+    if message.reply_to_message and not raw_input:
+        raw_input = message.reply_to_message.text or message.reply_to_message.caption
+
+    if not raw_input:
+        return bot.reply_to(message, "❌ Please provide CC details or reply to a message containing them.")
+
+    cc = extract_cc(raw_input)
+    if not cc:
+        return bot.reply_to(message, "❌ No valid CC found. Use format: CC|MM|YY|CVV")
+
+    # BIN Lookup
+    bin_number = cc.split('|')[0][:6]
+    bin_info = get_bin_info(bin_number) or {}
+    mention = f"<a href='tg://user?id={user_id}'>{message.from_user.first_name}</a>"
+
+    # Send checking message
+    checking_msg = checking_status_format(cc, "Stripe Auth 2", bin_info)
+    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
+
+    # Run check safely
+    start_time = time.time()
+    check_result = safe_gateway_check(cc, process_card_au)
+    end_time = time.time()
+
+    if check_result["status"].upper() == "APPROVED":
+        send_to_group(cc, check_result["gateway"], check_result["response"], bin_info, round(end_time - start_time, 2), message.from_user)
+
+    response_text = single_check_format(
+        cc=cc, gateway=check_result["gateway"], response=check_result["response"],
+        mention=mention, Userstatus=get_user_status(user_id), bin_info=bin_info,
+        time_taken=round(end_time - start_time, 2), status=check_result["status"]
+    )
+    bot.edit_message_text(chat_id=message.chat.id, message_id=status_message.message_id,
+                          text=response_text, parse_mode='HTML')
+
 #=======================================================GATES========================================================================#
 # Handle /chk command
 @bot.message_handler(commands=['chk'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.chk'))
+@flood_control
 def handle_chk(message):
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
@@ -430,7 +629,11 @@ def handle_chk(message):
             return None
 
         # Normalize separators into "|"
-        cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())
+        cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())\
+        
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
         # Pattern for CC + MM + YY/YYYY + CVV
         match = re.search(r'(\d{12,19})\|?(\d{1,2})\|?(\d{2,4})\|?(\d{3,4})', cleaned)
@@ -524,121 +727,6 @@ def handle_chk(message):
         parse_mode='HTML'
     )
 
-# Handle /au command
-@bot.message_handler(commands=['au'])
-@bot.message_handler(func=lambda m: m.text and m.text.startswith('.au'))
-def handle_au(message):
-    # --- Helper: extract CC from messy text ---
-    def extract_cc(text: str):
-        """
-        Extracts a credit card from messy/jumbled text in various formats
-        and normalizes to CC|MM|YY|CVV.
-        Supported formats:
-        CC|MM|YY|CVV
-        CC:MM:YYYY:CVV
-        CC/MM/YYYY/CVV
-        CC.MM.YYYY.CVV
-        CC\MM\YYYY\CVV
-        CC|MM/YYYY|CVV
-        CCMMYYYYCVV
-        """
-        if not text:
-            return None
-
-        # Normalize separators into "|"
-        cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())
-
-        # Pattern for CC + MM + YY/YYYY + CVV
-        match = re.search(r'(\d{12,19})\|?(\d{1,2})\|?(\d{2,4})\|?(\d{3,4})', cleaned)
-        if match:
-            cc, mm, yy, cvv = match.groups()
-
-            # Fix year (if 4 digits → convert to last 2)
-            if len(yy) == 4:
-                yy = yy[-2:]
-
-            # Ensure 2-digit month
-            mm = mm.zfill(2)
-
-            return f"{cc}|{mm}|{yy}|{cvv}"
-
-        return None
-
-    # --- User credit system (already in your project) ---
-    user_id = message.from_user.id
-    init_user(user_id, message.from_user.username)
-    if not use_credits(user_id):
-        bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
-        return
-
-    # --- Step 1: Get raw text (after command or from reply) ---
-    command_parts = message.text.split(maxsplit=1)
-    raw_input = None
-
-    if len(command_parts) > 1:
-        raw_input = command_parts[1]
-    elif message.reply_to_message:  
-        if message.reply_to_message.text:
-            raw_input = message.reply_to_message.text
-        elif message.reply_to_message.caption:
-            raw_input = message.reply_to_message.caption
-
-    if not raw_input:
-        bot.reply_to(message, "❌ Please provide CC details or reply to a message containing them.")
-        return
-
-    # --- Step 2: Extract CC ---
-    cc = extract_cc(raw_input)
-    if not cc:
-        bot.reply_to(message, "❌ No valid CC found. Use format: CC|MM|YY|CVV")
-        return
-
-    # --- Step 3: BIN lookup + user mention ---
-    user_status = get_user_status(message.from_user.id)
-    mention = f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a>"
-    bin_number = cc.split('|')[0][:6]
-    bin_info = get_bin_info(bin_number) or {}
-
-    # --- Step 4: Send "checking..." message ---
-    checking_msg = checking_status_format(cc, "Stripe Auth 2", bin_info)
-    status_message = bot.reply_to(message, checking_msg, parse_mode='HTML')
-
-    # --- Step 5: Run AU check ---
-    start_time = time.time()
-    check_result = process_card_au(cc)
-    end_time = time.time()
-    time_taken = round(end_time - start_time, 2)
-
-    # --- Step 6: If approved → send to group ---
-    if check_result["status"].upper() == "APPROVED":
-        send_to_group(
-            cc=cc,
-            gateway=check_result["gateway"],
-            response=check_result["response"],
-            bin_info=bin_info,
-            time_taken=time_taken,
-            user_info=message.from_user
-        )
-
-    # --- Step 7: Final response ---
-    response_text = single_check_format(
-        cc=cc,
-        gateway=check_result["gateway"],
-        response=check_result["response"],
-        mention=mention,
-        Userstatus=user_status,
-        bin_info=bin_info,
-        time_taken=time_taken,
-        status=check_result["status"]
-    )
-
-    bot.edit_message_text(
-        chat_id=message.chat.id,
-        message_id=status_message.message_id,
-        text=response_text,
-        parse_mode='HTML'
-    )
-
 
 # Handle /mass command
 import re
@@ -647,6 +735,7 @@ import threading
 import concurrent.futures
 
 @bot.message_handler(commands=['mass'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mass'))
 def handle_mass(message):
     # --- Helper: extract CCs from messy text ---
@@ -668,6 +757,10 @@ def handle_mass(message):
 
         # Normalize separators to "|"
         cleaned = re.sub(r'[\s:/\.\-\\]+', '|', text.strip())
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
         matches = re.findall(r'(\d{12,19})\|?(\d{1,2})\|?(\d{2,4})\|?(\d{3,4})', cleaned)
         cards = []
@@ -803,6 +896,7 @@ def handle_mass(message):
 
 # Handle /mchk command
 @bot.message_handler(commands=['mchk'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mchk'))
 def handle_mchk(message):
     user_id = message.from_user.id
@@ -812,6 +906,10 @@ def handle_mchk(message):
         # --- Extract cards text ---
         cards_text = None
         command_parts = message.text.split(maxsplit=1)
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
         if len(command_parts) > 1:
             cards_text = command_parts[1]
@@ -928,6 +1026,7 @@ def handle_mchk(message):
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
 @bot.message_handler(commands=['vbv'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.vbv'))
 def handle_vbv(message):
     user_id = message.from_user.id
@@ -943,6 +1042,10 @@ def handle_vbv(message):
         match = re.search(r'(\d{12,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})', message.reply_to_message.text)
         if match:
             cc = match.group(0)
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
     # Case 2: Try to extract CC from user’s command message (anywhere in text)
     if not cc:
@@ -1000,6 +1103,7 @@ def handle_vbv(message):
 import re
 
 @bot.message_handler(commands=['py'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.py'))
 def handle_py(message):
     user_id = message.from_user.id
@@ -1015,6 +1119,10 @@ def handle_py(message):
         match = re.search(r'(\d{12,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})', message.reply_to_message.text)
         if match:
             cc = match.group(0)
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
     # Case 2: Extract CC from user’s message text (anywhere)
     if not cc:
@@ -1073,6 +1181,7 @@ def handle_py(message):
 import re
 
 @bot.message_handler(commands=['qq'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.qq'))
 def handle_qq(message):
     user_id = message.from_user.id
@@ -1088,7 +1197,10 @@ def handle_qq(message):
         if cc_text:
             process_qq_check(message, cc_text)
             return
-    
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
+        
     # Extract CC from the command itself
     command_text = message.text
     # Remove the command part (/qq or .qq)
@@ -1151,6 +1263,7 @@ import re
 
 # Same for cc
 @bot.message_handler(commands=['cc'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.cc'))
 def handle_cc(message):
     user_id = message.from_user.id
@@ -1166,6 +1279,10 @@ def handle_cc(message):
         match = re.search(r'(\d{12,19})\|(\d{2})\|(\d{2,4})\|(\d{3,4})', message.reply_to_message.text)
         if match:
             cc = match.group(0)
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
     # Case 2: Extract CC from anywhere in the command text
     if not cc:
@@ -1221,6 +1338,7 @@ def handle_cc(message):
     )
 
 @bot.message_handler(commands=['mvbv'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mvbv'))
 def handle_mvbv(message):
     user_id = message.from_user.id
@@ -1238,6 +1356,10 @@ def handle_mvbv(message):
             cards_text = message.reply_to_message.text
         else:
             bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
+            return
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
 
         # Extract CCs with regex (detects CCs anywhere in text)
@@ -1318,6 +1440,7 @@ def handle_mvbv(message):
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
 @bot.message_handler(commands=['mpy'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mpy'))
 def handle_mpy(message):
     user_id = message.from_user.id
@@ -1342,6 +1465,10 @@ def handle_mpy(message):
 
         if not cards:
             bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
+            return
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
 
         # Limit to 10 cards max
@@ -1416,6 +1543,7 @@ def handle_mpy(message):
 
 # 𝐦𝐪𝐪 𝐦𝐚𝐬𝐬 𝐒𝐭𝐫𝐢𝐩𝐞 𝐒𝐪𝐮𝐚𝐫𝐞 𝐜𝐡𝐞𝐜𝐤
 @bot.message_handler(commands=['mqq'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mqq'))
 def handle_mqq(message):
     user_id = message.from_user.id
@@ -1440,6 +1568,10 @@ def handle_mqq(message):
                 for card in line.split():
                     if '|' in card:
                         cards.append(card.strip())
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
         if not cards:
             bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
@@ -1522,6 +1654,7 @@ def handle_mqq(message):
 
 # Handle /mcc command
 @bot.message_handler(commands=['mcc'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mcc'))
 def handle_mcc(message):
     user_id = message.from_user.id
@@ -1546,6 +1679,10 @@ def handle_mcc(message):
                 for card in line.split():
                     if '|' in card:
                         cards.append(card.strip())
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
         if not cards:
             bot.reply_to(message, "❌ No valid cards found in the correct format (CC|MM|YY|CVV).")
@@ -1628,6 +1765,7 @@ def handle_mcc(message):
         
 # Handle /at command
 @bot.message_handler(commands=['at'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.at'))
 def handle_at(message):
     user_id = message.from_user.id
@@ -1650,6 +1788,10 @@ def handle_at(message):
 
         if not cc or '|' not in cc:
             bot.reply_to(message, "❌ Invalid format. Use: CC|MM|YY|CVV")
+            return
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
 
         if not use_credits(user_id):
@@ -1708,6 +1850,7 @@ def handle_at(message):
 
 # Handle /mat command
 @bot.message_handler(commands=['mat'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mat'))
 def handle_mat(message):
     user_id = message.from_user.id
@@ -1723,6 +1866,10 @@ def handle_mat(message):
             cards_text = message.reply_to_message.text
         else:
             bot.reply_to(message, "❌ Please provide cards after command or reply to a message containing cards.")
+            return
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
 
         cards = []
@@ -1820,6 +1967,7 @@ def handle_mat(message):
 
 # Handle /ar command
 @bot.message_handler(commands=['ar'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.ar'))
 def handle_ar(message):
     # --- Helper: extract CC from messy text ---
@@ -1856,6 +2004,10 @@ def handle_ar(message):
     # --- Step 1: Get raw text (after command or from reply) ---
     command_parts = message.text.split(maxsplit=1)
     raw_input = None
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
 
     if len(command_parts) > 1:
         raw_input = command_parts[1]
@@ -1923,6 +2075,7 @@ def handle_ar(message):
 
 # Handle /mar command
 @bot.message_handler(commands=['mar'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mar'))
 def handle_mar(message):
     user_id = message.from_user.id
@@ -1959,6 +2112,10 @@ def handle_mar(message):
 
         if not use_credits(user_id, len(cards)):
             bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
+            return
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
 
         initial_msg = f"🚀 Starting mass Cybersource Authnet check of {len(cards)} cards..."
@@ -2024,6 +2181,12 @@ def test_shopify_site(url):
         
         if response.status_code != 200:
             return False, "Site not reachable", "0.0", "shopify_payments", "No response"
+
+        user_id = message.from_user.id
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
             
         response_text = response.text
         
@@ -2042,12 +2205,14 @@ def test_shopify_site(url):
         except:
             pass
             
+            
         return True, api_message, price, gateway, "Site is reachable and working"
         
     except Exception as e:
         return False, f"Error testing site: {str(e)}", "0.0", "shopify_payments", "Error"
 
 @bot.message_handler(commands=['seturl'])
+@flood_control
 def handle_seturl(message):
     try:
         user_id = str(message.from_user.id)
@@ -2090,6 +2255,12 @@ def handle_seturl(message):
                                 message_id=status_msg.message_id,
                                 text=f"❌ Failed to verify Shopify site:\n{test_message}\nPlease check your URL and try again.")
             return
+        
+        user_id = message.from_user.id
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return
             
         # Store the URL with price
         USER_SITES[user_id] = {
@@ -2118,12 +2289,17 @@ def handle_seturl(message):
         bot.reply_to(message, f"Error: {str(e)}")
 
 @bot.message_handler(commands=['rmurl'])
+@flood_control
 def handle_rmurl(message):
     try:
         user_id = str(message.from_user.id)
         
         if user_id not in USER_SITES:
             bot.reply_to(message, "You don't have any site to remove. Add a site with /seturl")
+            return
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
             
         del USER_SITES[user_id]
@@ -2134,12 +2310,19 @@ def handle_rmurl(message):
         bot.reply_to(message, f"Error: {str(e)}")
 
 @bot.message_handler(commands=['myurl'])
+@flood_control
 def handle_myurl(message):
     try:
         user_id = str(message.from_user.id)
         
         if user_id not in USER_SITES:
             bot.reply_to(message, "You haven't added any site yet. Add a site with /seturl <your_shopify_url>")
+            return
+
+        user_id = message.from_user.id
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
             
         site_info = USER_SITES[user_id]
@@ -2301,6 +2484,7 @@ def format_shopify_response(result, user_full_name, processing_time):
     return response
 
 @bot.message_handler(commands=['sh'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sh'))
 def handle_sh(message):
     user_id = str(message.from_user.id)
@@ -2351,6 +2535,12 @@ def handle_sh(message):
 
         if not cc:
             bot.reply_to(message, "❌ No card found. Either provide CC details after command or reply to a message containing CC details.")
+            return
+        
+        user_id = message.from_user.id
+
+        if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
             return
 
         start_time = time.time()
@@ -2415,8 +2605,15 @@ def handle_sh(message):
 import re
 
 @bot.message_handler(commands=['pp'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.pp'))
 def handle_pp(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return    
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
     if not use_credits(user_id):
@@ -2430,6 +2627,8 @@ def handle_pp(message):
         if cc_text:
             process_cc_check(message, cc_text)
             return
+
+
     
     # Extract CC from the command itself
     command_text = message.text
@@ -2509,8 +2708,14 @@ def process_cc_check(message, cc):
 
 # 𝐦𝐩𝐩 𝐦𝐚𝐬𝐬 𝐏𝐚𝐲𝐏𝐚𝐥 𝐜𝐡𝐞𝐜𝐤
 @bot.message_handler(commands=['mpp'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mpp'))
 def handle_mpp(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -2618,8 +2823,14 @@ def handle_mpp(message):
 # --------------------
 # Handle /svb command
 @bot.message_handler(commands=['svb'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.svb'))
 def handle_svb(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
     
@@ -2703,8 +2914,14 @@ def process_svb_check(message, cc):
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
         
 @bot.message_handler(commands=['msvb'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msvb'))
 def handle_msvb(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -2767,8 +2984,14 @@ def handle_msvb(message):
 
 # Handle /sr command
 @bot.message_handler(commands=['sr'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sr'))
 def handle_sr(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
         if not text:
@@ -2871,8 +3094,14 @@ def handle_sr(message):
 
 # Handle /msr command
 @bot.message_handler(commands=['msr'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msr'))
 def handle_msr(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -2963,8 +3192,14 @@ def handle_msr(message):
 
 # Handle /pf command
 @bot.message_handler(commands=['pf'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.pf'))
 def handle_pf(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
         if not text:
@@ -3066,8 +3301,14 @@ def handle_pf(message):
 
 # Handle /mpf command
 @bot.message_handler(commands=['mpf'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mpf'))
 def handle_mpf(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -3158,8 +3399,14 @@ def handle_mpf(message):
 
 # Handle /sq command
 @bot.message_handler(commands=['sq'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sq'))
 def handle_sq(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
         if not text:
@@ -3261,8 +3508,14 @@ def handle_sq(message):
 
 # Handle /msq command
 @bot.message_handler(commands=['msq'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msq'))
 def handle_msq(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -3353,8 +3606,14 @@ def handle_msq(message):
 
 # Handle /sp command
 @bot.message_handler(commands=['sp'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sp'))
 def handle_sp(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
         if not text:
@@ -3456,8 +3715,14 @@ def handle_sp(message):
 
 # Handle /msp command
 @bot.message_handler(commands=['msp'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msp'))
 def handle_msp(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -3548,8 +3813,14 @@ def handle_msp(message):
 
 # Handle /b3 command
 @bot.message_handler(commands=['b3'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.b3'))
 def handle_b3(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     # --- Helper: extract CC from messy text ---
     def extract_cc(text: str):
         if not text:
@@ -3651,8 +3922,14 @@ def handle_b3(message):
 
 # Handle /mb3 command
 @bot.message_handler(commands=['mb3'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.mb3'))
 def handle_mb3(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -3757,8 +4034,14 @@ def extract_ccs(text):
     return cleaned
 
 @bot.message_handler(commands=['fl'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.fl'))
 def format_list(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     target_text = message.text
 
     # If replying to message, extract that instead
@@ -3777,8 +4060,14 @@ def format_list(message):
     bot.reply_to(message, msg, parse_mode="HTML")
 
 @bot.message_handler(commands=['dork'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.dork'))
 def handle_dork(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = str(message.from_user.id)
     chat_id = str(message.chat.id)
 
@@ -3975,8 +4264,14 @@ def get_bot_stats():
 
 # Handle /stats command (Admin/Owner only)
 @bot.message_handler(commands=['stats'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.stats'))
 def handle_stats(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     
     # Check if user is owner or admin
@@ -4030,6 +4325,11 @@ def handle_stats(message):
 @bot.message_handler(commands=['broad'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.broad'))
 def handle_broadcast(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     
     # Check if user is owner or admin
@@ -4203,8 +4503,14 @@ def handle_broadcast(message):
 
 # Handle /ping command
 @bot.message_handler(commands=['ping'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.ping'))
 def handle_ping(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     try:
         # Calculate bot response time
         start_time = time.time()
@@ -4260,10 +4566,17 @@ def handle_ping(message):
             bot.reply_to(message, f"❌ Error: {str(e)}")
 
 @bot.message_handler(commands=['open'])
+@flood_control
 def open_txt_file(message):
     if not message.reply_to_message or not message.reply_to_message.document:
         bot.reply_to(message, "❌ Please reply to a text file.")
         return
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
 
     try:
         file_info = bot.get_file(message.reply_to_message.document.file_id)
@@ -4285,7 +4598,15 @@ def open_txt_file(message):
         bot.reply_to(message, f"❌ Error: {str(e)}")
 
 @bot.message_handler(commands=['split'])
+@flood_control
 def split_txt_file(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
+    
     if not message.reply_to_message or not message.reply_to_message.document:
         bot.reply_to(message, "❌ Please reply to a text file.")
         return
@@ -4346,8 +4667,15 @@ def stripe_key_format(key, mode, account_info):
 
 # Handle /sk command
 @bot.message_handler(commands=['sk'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sk'))
 def handle_sk(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -4398,8 +4726,15 @@ def handle_sk(message):
 
 # Handle /msk command
 @bot.message_handler(commands=['msk'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.msk'))
 def handle_msk(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -4481,8 +4816,15 @@ def handle_msk(message):
 
 # Handle /skgen command
 @bot.message_handler(commands=['skgen'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.skgen'))
 def handle_skgen(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     
     # Check credits for non-admin users
@@ -4594,8 +4936,15 @@ def handle_skgen(message):
     threading.Thread(target=generate_live_sk_keys).start()
 
 @bot.message_handler(commands=['fake'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.fake'))
 def handle_fake(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
         bot.reply_to(message, "❌ Usage: /fake <country_code>\nExample: /fake us, .fake in")
@@ -4679,10 +5028,17 @@ def handle_fake(message):
     except Exception as e:
         bot.reply_to(message, f"❌ Error generating identity: {str(e)}")
 
-# Handle both /gen and .gen
 @bot.message_handler(commands=['gen'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.gen'))
 def handle_gen(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
+        
+    status_msg = None
     try:
         # Parse command
         parts = message.text.split()
@@ -4695,12 +5051,10 @@ def handle_gen(message):
             bot.reply_to(message, "❌ Invalid BIN. BIN must be at least 6 digits.")
             return
         
-        # Default behavior - show 10 CCs in message if no count specified
+        # Default behavior: show 10 CCs inline
         if len(parts) == 2:
-            # Get BIN info
             bin_info = get_bin_info(bin_input[:6])
             bank = bin_info.get('bank', 'N/A') if bin_info else 'N/A'
-            country_name = bin_info.get('country', 'N/A') if bin_info else 'N/A'
             flag = bin_info.get('country_flag', '🌍') if bin_info else '🌍'
             card_type = bin_info.get('type', 'N/A') if bin_info else 'N/A'
             
@@ -4712,7 +5066,6 @@ def handle_gen(message):
                     if response.status_code == 200:
                         ccs = response.text.strip().split('\n')
                         formatted_ccs = "\n".join(f"<code>{cc}</code>" for cc in ccs)
-                        
                         result = f"""
 <pre>Generated 10 CCs 💳</pre>
 
@@ -4725,21 +5078,21 @@ def handle_gen(message):
 𝐁𝐚𝐧𝐤 ➳ {bank}</pre>
 """
                         bot.edit_message_text(chat_id=message.chat.id,
-                                            message_id=status_msg.message_id,
-                                            text=result,
-                                            parse_mode='HTML')
+                                             message_id=status_msg.message_id,
+                                             text=result,
+                                             parse_mode='HTML')
                     else:
                         bot.edit_message_text(chat_id=message.chat.id,
-                                            message_id=status_msg.message_id,
-                                            text="❌ Failed to generate CCs. Please try again.")
-                except Exception as e:
+                                             message_id=status_msg.message_id,
+                                             text="❌ Failed to generate CCs. Please try again.")
+                except Exception:
                     bot.edit_message_text(chat_id=message.chat.id,
                                          message_id=status_msg.message_id,
-                                         text=f"❌ Error generating CCs: {str(e)}")
+                                         text="❌ Error generating CCs. Please try again later.")
             
             threading.Thread(target=generate_inline).start()
         
-        # If count is specified, always generate a file
+        # If count specified, generate file
         else:
             try:
                 count = int(parts[2])
@@ -4750,10 +5103,8 @@ def handle_gen(message):
                     count = 5000
                     bot.reply_to(message, "⚠️ Maximum count is 5000. Generating 5000 CCs.")
                 
-                # Get BIN info
                 bin_info = get_bin_info(bin_input[:6])
                 bank = bin_info.get('bank', 'N/A') if bin_info else 'N/A'
-                country_name = bin_info.get('country_name', 'N/A') if bin_info else 'N/A'
                 flag = bin_info.get('country_flag', '🌍') if bin_info else '🌍'
                 card_type = bin_info.get('type', 'N/A') if bin_info else 'N/A'
                 
@@ -4761,25 +5112,23 @@ def handle_gen(message):
                 
                 def generate_file():
                     try:
-                        # Generate in chunks to avoid memory issues
                         chunk_size = 100
                         chunks = count // chunk_size
                         remainder = count % chunk_size
                         
-                        with open(f'ccgen_{bin_input}.txt', 'w') as f:
+                        file_path = f'ccgen_{bin_input}.txt'
+                        with open(file_path, 'w') as f:
                             for _ in range(chunks):
                                 response = requests.get(CC_GENERATOR_URL.format(bin_input, chunk_size))
                                 if response.status_code == 200:
                                     f.write(response.text)
-                                time.sleep(1)  # Be gentle with the API
-                            
+                                time.sleep(1)
                             if remainder > 0:
                                 response = requests.get(CC_GENERATOR_URL.format(bin_input, remainder))
                                 if response.status_code == 200:
                                     f.write(response.text)
                         
-                        # Send the file
-                        with open(f'ccgen_{bin_input}.txt', 'rb') as f:
+                        with open(file_path, 'rb') as f:
                             bot.send_document(message.chat.id, f, caption=f"""
 Generated {count} CCs 💳
 ━━━━━━━━━━━━━━━━━━
@@ -4790,14 +5139,12 @@ Generated {count} CCs 💳
 ━━━━━━━━━━━━━━━━━━
 """)
                         
-                        # Clean up
-                        os.remove(f'ccgen_{bin_input}.txt')
+                        os.remove(file_path)
                         bot.delete_message(message.chat.id, status_msg.message_id)
-                    
-                    except Exception as e:
+                    except Exception:
                         bot.edit_message_text(chat_id=message.chat.id,
-                                            message_id=status_msg.message_id,
-                                            text=f"❌ Error generating CCs: {str(e)}")
+                                             message_id=status_msg.message_id,
+                                             text="❌ Error generating CCs. Please try again later.")
                 
                 threading.Thread(target=generate_file).start()
             
@@ -4805,7 +5152,15 @@ Generated {count} CCs 💳
                 bot.reply_to(message, "❌ Invalid count. Please provide a number.")
     
     except Exception as e:
-        bot.reply_to(message, f"❌ Error: {str(e)}")
+        error_msg = "❌ Error generating CCs. Please try again later."
+        if "network" in str(e).lower() or "connection" in str(e).lower():
+            error_msg = "❌ Network error. Please check your connection."
+        if status_msg:
+            bot.edit_message_text(chat_id=message.chat.id,
+                                 message_id=status_msg.message_id,
+                                 text=error_msg)
+        else:
+            bot.reply_to(message, error_msg)
 
 # Handle /gate command
 def check_gate_url(url):
@@ -4994,8 +5349,15 @@ def format_gate_result(result, mention, user_status, time_taken):
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁ {time_taken} 𝐬𝐞𝐜𝐨𝐧𝐝𝐬"""
 
 @bot.message_handler(commands=['gate'])
+@flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.gate'))
 def handle_gate(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -5064,6 +5426,12 @@ def format_bin_result(bin_info, bin_number, mention, user_status, time_taken):
 @bot.message_handler(commands=['bin'])
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.bin'))
 def handle_bin(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user_id = message.from_user.id
     init_user(user_id, message.from_user.username)
 
@@ -5108,6 +5476,13 @@ def handle_bin(message):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
+
+
     save_user(message.from_user.id, message.from_user.username)
 
     # Get user information
@@ -5211,6 +5586,11 @@ def handle_start(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     user = call.from_user
     mention = f"<a href='tg://user?id={user.id}'>{user.first_name}</a>"
     username = f"@{user.username}" if user.username else "None"
@@ -5620,6 +6000,12 @@ Choose a payment gateway to check your cards"""
 # Handle /info command
 @bot.message_handler(commands=['info'])
 def handle_info(message):
+
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     try:
         user = message.from_user
         chat = message.chat
@@ -5665,7 +6051,13 @@ def handle_info(message):
 
 # Handle /id command
 @bot.message_handler(commands=['id'])
+@flood_control
 def handle_id(message):
+    user_id = message.from_user.id
+
+    if check_banned(user_id):
+            bot.reply_to(message, "❌ You are banned from using this bot.")
+            return 
     try:
         user = message.from_user
         chat = message.chat
