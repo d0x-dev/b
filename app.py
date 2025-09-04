@@ -2171,6 +2171,12 @@ def handle_mar(message):
     except Exception as e:
         bot.reply_to(message, f"❌ An error occurred: {str(e)}")
 
+import requests
+import time
+import threading
+import re
+from urllib.parse import urlparse
+
 def test_shopify_site(url):
     """Test if a Shopify site is reachable and working with a test card"""
     try:
@@ -2200,7 +2206,6 @@ def test_shopify_site(url):
         except:
             pass
             
-            
         return True, api_message, price, gateway, "Site is reachable and working"
         
     except Exception as e:
@@ -2210,7 +2215,7 @@ def test_shopify_site(url):
 @flood_control
 def handle_seturl(message):
     try:
-        user_id = str(message.from_user.id)
+        user_id = message.from_user.id  # Keep as integer
         parts = message.text.split(maxsplit=1)
         
         if len(parts) < 2:
@@ -2250,14 +2255,12 @@ def handle_seturl(message):
                                 message_id=status_msg.message_id,
                                 text=f"❌ Failed to verify Shopify site:\n{test_message}\nPlease check your URL and try again.")
             return
-        
-        user_id = message.from_user.id
 
         if check_banned(user_id):
             bot.reply_to(message, "❌ You are banned from using this bot.")
             return
             
-        # Store the URL with price
+        # Store the URL with price (using integer user_id)
         USER_SITES[user_id] = {
             'url': url,
             'price': price
@@ -2287,7 +2290,7 @@ def handle_seturl(message):
 @flood_control
 def handle_rmurl(message):
     try:
-        user_id = str(message.from_user.id)
+        user_id = message.from_user.id  # Use integer
         
         if user_id not in USER_SITES:
             bot.reply_to(message, "You don't have any site to remove. Add a site with /seturl")
@@ -2308,13 +2311,11 @@ def handle_rmurl(message):
 @flood_control
 def handle_myurl(message):
     try:
-        user_id = str(message.from_user.id)
+        user_id = message.from_user.id  # Use integer
         
         if user_id not in USER_SITES:
             bot.reply_to(message, "You haven't added any site yet. Add a site with /seturl <your_shopify_url>")
             return
-
-        user_id = message.from_user.id
 
         if check_banned(user_id):
             bot.reply_to(message, "❌ You are banned from using this bot.")
@@ -2482,7 +2483,7 @@ def format_shopify_response(result, user_full_name, processing_time):
 @flood_control
 @bot.message_handler(func=lambda m: m.text and m.text.startswith('.sh'))
 def handle_sh(message):
-    user_id = str(message.from_user.id)
+    user_id = message.from_user.id  # Use integer consistently
     
     # Check if user has set a URL first
     if user_id not in USER_SITES:
@@ -2490,7 +2491,7 @@ def handle_sh(message):
         return
     
     # Check credits
-    if not use_credits(int(user_id)):
+    if not use_credits(user_id):
         bot.reply_to(message, "❌ You don't have enough credits. Wait for your credits to reset.")
         return
 
@@ -2531,8 +2532,6 @@ def handle_sh(message):
         if not cc:
             bot.reply_to(message, "❌ No card found. Either provide CC details after command or reply to a message containing CC details.")
             return
-        
-        user_id = message.from_user.id
 
         if check_banned(user_id):
             bot.reply_to(message, "❌ You are banned from using this bot.")
@@ -2545,7 +2544,7 @@ def handle_sh(message):
             user_full_name += " " + message.from_user.last_name
 
         # Get bin info for the checking status message
-        bin_number = cc.split('|')[0][:6]
+        bin_number = cc.split('|')[0][:6] if '|' in cc else cc[:6]
         bin_info = get_bin_info(bin_number) or {}
         brand = bin_info.get('brand', 'UNKNOWN')
         card_type = bin_info.get('type', 'UNKNOWN')
@@ -2574,7 +2573,7 @@ def handle_sh(message):
         def check_card():
             try:
                 result = check_shopify_cc(cc, USER_SITES[user_id])
-                result['user_id'] = message.from_user.id
+                result['user_id'] = user_id
                 processing_time = time.time() - start_time
                 response_text = format_shopify_response(result, user_full_name, processing_time)
 
