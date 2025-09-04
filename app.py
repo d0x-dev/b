@@ -48,8 +48,14 @@ CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count=
 #====================================================================#
 
 #==========================BOT=======================================#
-# Bot token
+# Remove this line:
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '7726872211:AAG5DNHpwZ5HBScTV9FzWBrP74g41FUp8pQ')
+# Replace with:
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+if not BOT_TOKEN:
+    print("❌ ERROR: BOT_TOKEN environment variable is not set!")
+    exit(1)
+    
 bot = telebot.TeleBot(BOT_TOKEN)
 #=====================================================================#
 
