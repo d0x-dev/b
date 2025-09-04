@@ -49,7 +49,7 @@ CC_GENERATOR_URL = "https://drlabapis.onrender.com/api/ccgenerator?bin={}&count=
 
 #==========================BOT=======================================#
 # Bot token
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8398297374:AAH39nPTZW851uKxDfnCZFP7i3zR4wSdJ6g')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '7726872211:AAG5DNHpwZ5HBScTV9FzWBrP74g41FUp8pQ')
 bot = telebot.TeleBot(BOT_TOKEN)
 #=====================================================================#
 
@@ -2177,7 +2177,7 @@ def test_shopify_site(url):
         # Use the fixed test card instead of generating random one
         test_card = "5547300001996183|11|2028|197"
         
-        api_url = f"https://rohitvishal.dev/index.php?site={url}&cc={test_card}&proxy=212.8.249.134:9999:rjhk1wsqtq-corp.mobile.res-country-EG-state-360631-city-360630-hold-query:Q7A8mEhCg5OWRdSj"
+        api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={url}&cc={test_card}"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
@@ -2368,7 +2368,7 @@ def check_shopify_cc(cc, site_info):
             pass
 
         # Make API request
-        api_url = f"https://rohitvishal.dev/index.php?site={site_info['url']}&cc={formatted_cc}&proxy=212.8.249.134:9999:rjhk1wsqtq-corp.mobile.res-country-EG-state-360631-city-360630-hold-query:Q7A8mEhCg5OWRdSj"
+        api_url = f"https://auto-shopify-6cz4.onrender.com/index.php?site={site_info[%27url%27]}&cc={formatted_cc}"
         response = requests.get(api_url, timeout=100)
         
         if response.status_code != 200:
@@ -2473,7 +2473,7 @@ def format_shopify_response(result, user_full_name, processing_time):
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐂𝐨𝐮𝐧𝐭𝐫𝐲 ⌁ {result['country']}
 <a href='https://t.me/stormxvup'>──────── ⸙ ─────────</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝐑𝐞𝐪 𝐁𝐲 ⌁ {user_full_name}[{user_status}]
-<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ <a href='tg://user?id=6521162324'>⎯꯭𖣐᪵‌𐎓⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲◄⏤‌‌ꭙ‌‌⁷ ꯭</a>
+<a href='https://t.me/stormxvup'>[⸙]</a> 𝐃𝐞𝐯 ⌁ <a href='tg://user?id=6521162324'>⎯꯭𖣐᪵‌𐎓⏤‌‌𝐃𝐚𝐫𝐤𝐛𝐨𝐲◄⏤‌‌ꭙ‌‌⁷</a>
 <a href='https://t.me/stormxvup'>[⸙]</a> 𝗧𝗶𝗺𝗲 ⌁  {processing_time:.2f} 𝐬𝐞𝐜𝐨𝐧𝐝
 """
     return response
